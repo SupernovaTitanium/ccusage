@@ -709,7 +709,12 @@ fn load_codex_rows(
     let groups = codex::aggregate_events(&events, kind, shared.timezone.as_deref())?;
     let speed = codex::resolve_codex_speed(CodexSpeed::Auto);
     if shared.detail_bundle && kind == AgentReportKind::Daily {
+        let mut occurrences = BTreeMap::<String, usize>::new();
         for event in &events {
+            let identity = json!(["codex", event.session_id, event.timestamp, event.model]).to_string();
+            let occurrence = occurrences.entry(identity.clone()).or_default();
+            let usage_id = json!([identity, *occurrence]).to_string();
+            *occurrence += 1;
             let event_groups = codex::aggregate_events(
                 std::slice::from_ref(event),
                 kind,
@@ -720,10 +725,7 @@ fn load_codex_rows(
                 let mut bundle = super::details::bundle(std::slice::from_ref(&row), Vec::new());
                 if let Some(records) = bundle["records"].as_array_mut() {
                     for record in records {
-                        record["usageId"] =
-                            json!(["codex", event.session_id, event.timestamp, event.model])
-                                .to_string()
-                                .into();
+                        record["usageId"] = json!(usage_id);
                         record["sessionId"] = json!(event.session_id);
                         record["timestamp"] = json!(event.timestamp);
                         record["rawModel"] = json!(event.model);
