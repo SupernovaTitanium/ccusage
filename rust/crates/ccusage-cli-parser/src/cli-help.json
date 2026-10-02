@@ -88,6 +88,11 @@
 			"description": "Emit multiple unified report sections from one load (daily, weekly, monthly, session)"
 		},
 		{
+			"flags": "--detail-bundle",
+			"description": "Include body-free accepted usage evidence in unified daily JSON (UTC+3; requires costs)",
+			"default": "false"
+		},
+		{
 			"flags": "--by-agent",
 			"description": "Include per-agent JSON breakdowns in unified report rows",
 			"default": "false"

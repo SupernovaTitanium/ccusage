@@ -627,6 +627,51 @@ fn renders_multi_section_json_with_command_totals() {
     insta::assert_snapshot!(serde_json::to_string_pretty(&report).unwrap());
 }
 
+fn assert_detail_parity(shared: &SharedArgs) {
+    let mut shared = shared.clone();
+    shared.timezone = Some("Etc/GMT-3".to_string());
+    let baseline = load_rows(AgentReportKind::Daily, &shared).unwrap();
+    shared.detail_bundle = true;
+    let loaded = load_rows(AgentReportKind::Daily, &shared).unwrap();
+    assert_eq!(
+        report_json(&baseline.rows, AgentReportKind::Daily),
+        report_json(&loaded.rows, AgentReportKind::Daily)
+    );
+    let bundle = super::details::bundle(&loaded.rows, loaded.details);
+    let records = bundle["records"].as_array().unwrap();
+    for row in &loaded.rows {
+        for field in [
+            "inputTokens",
+            "outputTokens",
+            "cacheReadTokens",
+            "cacheCreationTokens",
+            "totalTokens",
+        ] {
+            let actual: u64 = records
+                .iter()
+                .filter(|record| record["day"] == row.period)
+                .map(|record| record[field].as_u64().unwrap())
+                .sum();
+            let expected = report_json(std::slice::from_ref(row), AgentReportKind::Daily)["daily"]
+                [0][field]
+                .as_u64()
+                .unwrap();
+            assert_eq!(actual, expected, "{field}");
+        }
+        let cost: f64 = records
+            .iter()
+            .filter(|record| record["day"] == row.period)
+            .map(|record| record["cost"].as_f64().unwrap())
+            .sum();
+        assert!((cost - row.total_cost).abs() <= 1e-6 + row.total_cost.abs() * 1e-9);
+    }
+    assert!(
+        records
+            .iter()
+            .all(|record| record.get("prompt").is_none() && record.get("messages").is_none())
+    );
+}
+
 #[test]
 fn renders_multi_section_json_keys_in_invoked_section_order_with_totals_last() {
     let sections = vec![
@@ -741,6 +786,7 @@ fn multi_section_claude_fixture_matches_standalone_sections_for_daily_and_sessio
     let shared = fixture_shared("20990102", "20990102");
 
     assert_daily_family_and_session_sections_match_standalone(&shared);
+    assert_detail_parity(&shared);
 }
 
 #[test]
@@ -763,6 +809,7 @@ fn multi_section_codex_fixture_matches_standalone_sections_for_daily_and_session
     let shared = fixture_shared("20990201", "20990202");
 
     assert_daily_family_and_session_sections_match_standalone(&shared);
+    assert_detail_parity(&shared);
 }
 
 #[test]
@@ -778,6 +825,7 @@ fn zcode_fixture_reports_daily_monthly_session_json_and_table_snapshots() {
     );
     let mut shared = fixture_shared("20990101", "20990201");
     shared.mode = CostMode::Calculate;
+    assert_detail_parity(&shared);
 
     let daily = load_rows(AgentReportKind::Daily, &shared).unwrap();
     let monthly = load_rows(AgentReportKind::Monthly, &shared).unwrap();

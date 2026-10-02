@@ -65,6 +65,7 @@ OPTIONS:
   -z, --timezone <timezone>            Timezone for date grouping (IANA)
   --all                                Accepted for compatibility; all detected supported agents are included by default (default: false)
   --sections <sections>                Emit multiple unified report sections from one load (daily, weekly, monthly, session)
+  --detail-bundle                      Include body-free accepted usage evidence in unified daily JSON (UTC+3; requires costs) (default: false)
   --by-agent                           Include per-agent JSON breakdowns in unified report rows (default: false)
   -O, --offline                        Use cached pricing data where supported (default: false)
   --no-offline                         Negatable of -O, --offline

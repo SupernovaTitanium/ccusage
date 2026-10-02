@@ -474,6 +474,34 @@ fn push_deduped_session_alias(
     }
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum UsageLine {
+    Direct(UsageEntry),
+    AgentProgress {
+        #[serde(rename = "sessionId")]
+        session_id: Option<String>,
+        data: AgentProgressData,
+    },
+}
+
+#[derive(Deserialize)]
+struct AgentProgressData {
+    message: UsageEntry,
+}
+
+impl UsageLine {
+    fn into_entry(self) -> UsageEntry {
+        match self {
+            Self::Direct(entry) => entry,
+            Self::AgentProgress { session_id, data } => UsageEntry {
+                session_id,
+                ..data.message
+            },
+        }
+    }
+}
+
 fn read_usage_file(
     path: &Path,
     tz: Option<&JiffTimeZone>,
@@ -497,9 +525,10 @@ fn read_usage_file(
         if usage_marker.find(line).is_none() {
             continue;
         }
-        let Some(data) = deserialize_usage_line::<UsageEntry>(line) else {
+        let Some(data) = deserialize_usage_line::<UsageLine>(line) else {
             continue;
         };
+        let data = data.into_entry();
         let Some(timestamp) = parse_ts_timestamp(&data.timestamp) else {
             continue;
         };

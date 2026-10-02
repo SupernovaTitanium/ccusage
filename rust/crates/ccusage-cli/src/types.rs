@@ -55,6 +55,7 @@ pub struct SharedArgs {
     pub compact: bool,
     pub single_thread: bool,
     pub no_cost: bool,
+    pub detail_bundle: bool,
     pub pricing_overrides: BTreeMap<String, PricingOverride>,
     pub pi_stores: Vec<NamedPiStore>,
 }

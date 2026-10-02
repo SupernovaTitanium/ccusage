@@ -24,12 +24,14 @@ pub(super) struct AllRow {
 pub(super) struct AllLoadResult {
     pub(super) rows: Vec<AllRow>,
     pub(super) detected_agents: Vec<&'static str>,
+    pub(super) details: Vec<Value>,
 }
 
 pub(super) struct AllSectionsLoadResult {
     pub(super) sections: Vec<(AgentReportKind, Vec<AllRow>)>,
     pub(super) daily_detected_agents: Vec<&'static str>,
     pub(super) session_detected_agents: Vec<&'static str>,
+    pub(super) details: Vec<Value>,
 }
 
 impl AllSectionsLoadResult {
@@ -59,6 +61,7 @@ pub(super) struct LoadedAgentRows {
     pub(super) index: usize,
     pub(super) agent: &'static str,
     pub(super) agent_rows: AgentRows,
+    pub(super) details: Vec<Value>,
 }
 
 #[derive(Default)]

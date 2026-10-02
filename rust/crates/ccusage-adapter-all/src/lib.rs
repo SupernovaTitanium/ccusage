@@ -1,3 +1,4 @@
+mod details;
 mod loader;
 mod report;
 mod types;
@@ -37,12 +38,35 @@ use crate::{
 
 pub fn run(args: AgentCommandArgs) -> Result<()> {
     let kind = args.kind;
-    let shared = args.shared;
-    let include_agents = args.by_agent;
+    let mut shared = args.shared;
+    if shared.detail_bundle {
+        if kind != AgentReportKind::Daily || !wants_json(&shared) || shared.no_cost {
+            return Err(cli_error(
+                "--detail-bundle requires unified daily JSON with costs",
+            ));
+        }
+        shared.timezone = Some("Etc/GMT-3".to_string());
+    }
+    let include_agents = args.by_agent || shared.detail_bundle;
     if let Some(sections) = args.sections {
         let sections = requested_sections(kind, sections);
         let result = loader::load_sections(&sections, &shared)?;
         if wants_json(&shared) {
+            if shared.detail_bundle {
+                let mut output = serde_json::to_value(report::sections_report_json(
+                    &result.sections,
+                    kind,
+                    true,
+                ))?;
+                let rows = result
+                    .sections
+                    .iter()
+                    .find(|(section, _)| *section == AgentReportKind::Daily)
+                    .map(|(_, rows)| rows.as_slice())
+                    .unwrap_or_default();
+                output["details"] = details::bundle(rows, result.details);
+                return print_json_or_jq(output, shared.jq.as_deref(), false);
+            }
             return report::print_sections_report_json(
                 &result.sections,
                 kind,
@@ -63,7 +87,10 @@ pub fn run(args: AgentCommandArgs) -> Result<()> {
     }
     let result = loader::load_rows(kind, &shared)?;
     if wants_json(&shared) {
-        let output = report::report_json_with_agents(&result.rows, kind, include_agents);
+        let mut output = report::report_json_with_agents(&result.rows, kind, include_agents);
+        if shared.detail_bundle {
+            output["details"] = details::bundle(&result.rows, result.details);
+        }
         return print_json_or_jq(output, shared.jq.as_deref(), shared.no_cost);
     }
     report::print_table(&result.rows, kind, &shared, &result.detected_agents)

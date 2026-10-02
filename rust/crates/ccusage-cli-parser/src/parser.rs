@@ -107,7 +107,7 @@ impl Cli {
         }
 
         let command = match parser.next() {
-            None if root_all_options.is_used() => Some(Command::All(
+            None if root_all_options.is_used() || shared.detail_bundle => Some(Command::All(
                 root_all_options.into_agent_args(shared.clone(), AgentReportKind::Daily),
             )),
             None => None,
@@ -128,6 +128,12 @@ impl Cli {
         }
         if let Some(message) = date_window_error(command.as_ref(), &shared) {
             return Err(message);
+        }
+        let detail_requested = parser.args.iter().any(|arg| arg == "--detail-bundle");
+        if detail_requested
+            && !matches!(command.as_ref(), Some(Command::All(args)) if args.kind == AgentReportKind::Daily)
+        {
+            return Err("--detail-bundle requires unified daily JSON".to_string());
         }
         Ok(Self { command, shared })
     }
@@ -773,6 +779,7 @@ fn parse_shared_arg(parser: &mut ArgParser, shared: &mut SharedArgs) -> Result<(
         "--compact" => shared.compact = true,
         "--single-thread" => shared.single_thread = true,
         "--no-cost" => shared.no_cost = true,
+        "--detail-bundle" => shared.detail_bundle = true,
         flag => return Err(format!("Unknown option '{flag}'")),
     }
     Ok(())
