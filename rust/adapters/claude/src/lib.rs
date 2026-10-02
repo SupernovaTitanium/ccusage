@@ -289,6 +289,34 @@ fn push_deduped_index(
     }
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum UsageLine {
+    Direct(UsageEntry),
+    AgentProgress {
+        #[serde(rename = "sessionId")]
+        session_id: Option<String>,
+        data: AgentProgressData,
+    },
+}
+
+#[derive(Deserialize)]
+struct AgentProgressData {
+    message: UsageEntry,
+}
+
+impl UsageLine {
+    fn into_entry(self) -> UsageEntry {
+        match self {
+            Self::Direct(entry) => entry,
+            Self::AgentProgress { session_id, data } => UsageEntry {
+                session_id,
+                ..data.message
+            },
+        }
+    }
+}
+
 fn read_usage_file(
     path: &Path,
     tz: Option<&JiffTimeZone>,
@@ -315,9 +343,10 @@ fn read_usage_file(
         if has_unsupported_null_field(line) {
             continue;
         }
-        let Ok(data) = serde_json::from_slice::<UsageEntry>(line) else {
+        let Ok(data) = serde_json::from_slice::<UsageLine>(line) else {
             continue;
         };
+        let data = data.into_entry();
         let Some(timestamp) = parse_ts_timestamp(&data.timestamp) else {
             continue;
         };

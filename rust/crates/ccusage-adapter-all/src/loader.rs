@@ -33,6 +33,7 @@ pub(super) fn load_rows(kind: AgentReportKind, shared: &SharedArgs) -> Result<Al
     Ok(AllLoadResult {
         rows: finish_rows(kind, loaded.rows, shared),
         detected_agents: loaded.detected_agents,
+        details: loaded.details,
     })
 }
 
@@ -77,6 +78,7 @@ pub(super) fn load_sections(
         sections,
         daily_detected_agents,
         session_detected_agents,
+        details: daily_base.map(|base| base.details).unwrap_or_default(),
     })
 }
 
@@ -381,7 +383,9 @@ fn load_base_rows(
     let loaded = load_agent_rows_parallel(specs, &mut progress)?;
     let mut detected_agents = Vec::new();
     let mut rows = Vec::new();
+    let mut details = Vec::new();
     for loaded in loaded {
+        details.extend(loaded.details);
         append_agent_rows(
             &mut rows,
             &mut detected_agents,
@@ -392,6 +396,7 @@ fn load_base_rows(
     Ok(AllLoadResult {
         rows,
         detected_agents,
+        details,
     })
 }
 
@@ -427,7 +432,9 @@ pub(super) fn load_agent_rows_parallel(
                 spec.progress_agent,
                 scope.spawn(move || {
                     let result = (spec.load)();
-                    let _ = sender.send((spec.index, spec.agent, spec.progress_agent, result));
+                    let details = super::details::take();
+                    let _ =
+                        sender.send((spec.index, spec.agent, spec.progress_agent, result, details));
                 }),
             ));
         }
@@ -435,7 +442,7 @@ pub(super) fn load_agent_rows_parallel(
 
         let mut loaded = Vec::with_capacity(handles.len());
         let mut errors = Vec::new();
-        for (index, agent, progress_agent, result) in receiver {
+        for (index, agent, progress_agent, result, details) in receiver {
             match result {
                 Ok(agent_rows) => {
                     progress.succeed(progress_agent);
@@ -443,6 +450,7 @@ pub(super) fn load_agent_rows_parallel(
                         index,
                         agent,
                         agent_rows,
+                        details,
                     });
                 }
                 Err(error) => {
@@ -552,6 +560,9 @@ fn load_summary_agent_rows(
     let mut entries = load_entries()?;
     let detected = !entries.is_empty();
     filter_loaded_entries_by_date(&mut entries, shared);
+    if shared.detail_bundle && kind == AgentReportKind::Daily {
+        super::details::capture(agent, &entries);
+    }
     let summaries = summarize_entries(&entries, kind)?;
     Ok(AgentRows {
         rows: summary_rows(agent, summaries, false),
@@ -573,6 +584,9 @@ fn load_pi_format_agent_rows(
         summarize_entry_sessions(&entries)?
     } else {
         filter_loaded_entries_by_date(&mut entries, shared);
+        if shared.detail_bundle && kind == AgentReportKind::Daily {
+            super::details::capture(agent, &entries);
+        }
         pi::summarize_entries(&entries, kind)?
     };
     Ok(AgentRows {
@@ -613,6 +627,9 @@ fn filtered_pi_format_agent_rows(
 ) -> Result<AgentRows> {
     let detected = !entries.is_empty();
     filter_loaded_entries_by_date(&mut entries, shared);
+    if shared.detail_bundle && kind == AgentReportKind::Daily {
+        super::details::capture(agent, &entries);
+    }
     let summaries = pi::summarize_entries(&entries, kind)?;
     Ok(AgentRows {
         rows: summary_rows(agent, summaries, include_project_path),
@@ -632,6 +649,11 @@ fn load_claude_rows(kind: AgentReportKind, shared: &SharedArgs) -> Result<AgentR
         });
     }
 
+    if shared.detail_bundle {
+        let mut entries = claude::load_entries(shared, None)?;
+        filter_loaded_entries_by_date(&mut entries, shared);
+        super::details::capture("claude", &entries);
+    }
     let mut summaries = claude::load_daily_summaries(shared, None, false)?;
     let detected = !summaries.is_empty();
     filter_daily_summaries_by_date(&mut summaries, shared);
@@ -657,7 +679,7 @@ fn load_codex_rows(
     shared: &SharedArgs,
     pricing: &PricingMap,
 ) -> Result<AgentRows> {
-    if shared.since.is_none() && shared.until.is_none() {
+    if !shared.detail_bundle && shared.since.is_none() && shared.until.is_none() {
         let groups = codex::load_groups(shared, kind)?;
         let detected = !groups.is_empty();
         let speed = codex::resolve_codex_speed(CodexSpeed::Auto);
@@ -674,6 +696,34 @@ fn load_codex_rows(
     codex::filter_events_by_date(&mut events, shared)?;
     let groups = codex::aggregate_events(&events, kind, shared.timezone.as_deref())?;
     let speed = codex::resolve_codex_speed(CodexSpeed::Auto);
+    if shared.detail_bundle && kind == AgentReportKind::Daily {
+        for event in &events {
+            let event_groups = codex::aggregate_events(
+                std::slice::from_ref(event),
+                kind,
+                shared.timezone.as_deref(),
+            )?;
+            for (day, group) in event_groups {
+                let row = codex_group_row(&day, &group, pricing, speed);
+                let mut bundle = super::details::bundle(std::slice::from_ref(&row), Vec::new());
+                if let Some(records) = bundle["records"].as_array_mut() {
+                    for record in records {
+                        record["usageId"] =
+                            json!(["codex", event.session_id, event.timestamp, event.model])
+                                .to_string()
+                                .into();
+                        record["sessionId"] = json!(event.session_id);
+                        record["timestamp"] = json!(event.timestamp);
+                        record["rawModel"] = json!(event.model);
+                        record["detailLevel"] = json!("event");
+                        record["attributionStatus"] = json!("accepted_replay_event");
+                        record["pricingStatus"] = json!("baked_request_tier");
+                    }
+                }
+                super::details::extend(bundle["records"].as_array().cloned().unwrap_or_default());
+            }
+        }
+    }
     Ok(AgentRows {
         rows: groups
             .iter()
@@ -712,6 +762,9 @@ fn load_qwen_rows(kind: AgentReportKind, shared: &SharedArgs) -> Result<AgentRow
         });
     }
     filter_loaded_entries_by_date(&mut entries, shared);
+    if shared.detail_bundle && kind == AgentReportKind::Daily {
+        super::details::capture("qwen", &entries);
+    }
     let summaries = qwen::summarize_entries(&entries, kind)?;
     Ok(AgentRows {
         rows: summary_rows("qwen", summaries, false),
@@ -839,7 +892,12 @@ where
                 output_tokens: usage.output_tokens,
                 cache_creation_tokens: usage.cache_creation_tokens,
                 cache_read_tokens: usage.cached_input_tokens,
-                extra_total_tokens: 0,
+                extra_total_tokens: usage.total_tokens.saturating_sub(
+                    input
+                        .saturating_add(usage.output_tokens)
+                        .saturating_add(usage.cache_creation_tokens)
+                        .saturating_add(usage.cached_input_tokens),
+                ),
                 cost: codex::calculate_codex_model_cost(model, usage, pricing, speed),
                 missing_pricing: codex::codex_model_missing_pricing(model, usage, pricing),
             }

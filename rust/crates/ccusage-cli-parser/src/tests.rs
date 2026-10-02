@@ -368,6 +368,24 @@ fn rejects_last_periods_that_are_not_positive_whole_numbers() {
 }
 
 #[test]
+fn parses_detail_bundle_only_for_unified_daily() {
+    for argv in [
+        vec!["ccusage", "daily", "--json", "--detail-bundle"],
+        vec!["ccusage", "--json", "--detail-bundle"],
+    ] {
+        let cli = parse(&argv);
+        let Some(Command::All(args)) = cli.command else {
+            panic!("expected unified daily");
+        };
+        assert!(args.shared.detail_bundle);
+    }
+    assert_eq!(
+        parse_error(&["ccusage", "monthly", "--json", "--detail-bundle"]),
+        "--detail-bundle requires unified daily JSON"
+    );
+}
+
+#[test]
 fn parses_unified_sections_and_by_agent_flags() {
     let cli = parse(&[
         "ccusage",
