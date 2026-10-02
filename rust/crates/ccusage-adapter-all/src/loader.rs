@@ -716,7 +716,7 @@ fn load_codex_rows(
                 shared.timezone.as_deref(),
             )?;
             for (day, group) in event_groups {
-                let row = codex_group_row(&day, &group, pricing, speed);
+                let row = codex_group_row(&day, &group, pricing, speed, shared.mode);
                 let mut bundle = super::details::bundle(std::slice::from_ref(&row), Vec::new());
                 if let Some(records) = bundle["records"].as_array_mut() {
                     for record in records {
