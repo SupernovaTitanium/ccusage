@@ -790,6 +790,49 @@ fn multi_section_claude_fixture_matches_standalone_sections_for_daily_and_sessio
 }
 
 #[test]
+fn claude_detail_nested_cache_creation_matches_daily() {
+    let fixture = fs_fixture!({
+        "projects/project-a/session-a.jsonl": r#"{"timestamp":"2099-01-01T22:00:00.000Z","sessionId":"session-a","requestId":"req-a","costUSD":1.25,"message":{"id":"msg-a","model":"claude-sonnet-4-20250514","usage":{"input_tokens":10,"output_tokens":2,"cache_creation":{"ephemeral_5m_input_tokens":7,"ephemeral_1h_input_tokens":3}}}}"#,
+    });
+    let _env = isolated_agent_env(
+        &fixture,
+        "CLAUDE_CONFIG_DIR",
+        fixture.root().as_os_str().into(),
+    );
+    let shared = SharedArgs {
+        mode: CostMode::Display,
+        timezone: Some("Etc/GMT-3".to_string()),
+        ..fixture_shared("20990102", "20990102")
+    };
+    let baseline = load_rows(AgentReportKind::Daily, &shared).unwrap();
+    assert_eq!(baseline.rows.len(), 1);
+    assert_eq!(baseline.rows[0].cache_creation_tokens, 10);
+    assert_eq!(baseline.rows[0].total_tokens, 22);
+    assert_detail_parity(&shared);
+}
+
+#[test]
+fn claude_detail_detects_usage_outside_date_window() {
+    let fixture = fs_fixture!({
+        "projects/project-a/session-a.jsonl": r#"{"timestamp":"2099-01-01T00:00:00.000Z","sessionId":"session-a","costUSD":1.25,"message":{"id":"msg-a","model":"claude-sonnet-4-20250514","usage":{"input_tokens":10,"output_tokens":2}}}"#,
+    });
+    let _env = isolated_agent_env(
+        &fixture,
+        "CLAUDE_CONFIG_DIR",
+        fixture.root().as_os_str().into(),
+    );
+    let shared = SharedArgs {
+        detail_bundle: true,
+        mode: CostMode::Display,
+        ..fixture_shared("20990102", "20990102")
+    };
+    let loaded = load_rows(AgentReportKind::Daily, &shared).unwrap();
+    assert!(loaded.rows.is_empty());
+    assert!(loaded.details.is_empty());
+    assert!(loaded.detected_agents.contains(&"claude"));
+}
+
+#[test]
 fn multi_section_codex_fixture_matches_standalone_sections_for_daily_and_session_invocations() {
     let _aliases = set_model_aliases_for_tests([("private-alpha", "gpt-5.2")]);
     let duplicate_session_usage = codex_usage_line("2099-02-01T08:01:00.000Z", "gpt-5.2", 1_000);

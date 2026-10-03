@@ -34,10 +34,10 @@ pub(super) fn capture(agent: &str, entries: &[LoadedEntry]) {
                 "rawModel": entry.data.message.model, "model": model,
                 "inputTokens": usage.input_tokens, "outputTokens": usage.output_tokens,
                 "cacheReadTokens": usage.cache_read_input_tokens,
-                "cacheCreationTokens": usage.cache_creation_input_tokens,
+                "cacheCreationTokens": usage.cache_creation_token_count(),
                 "totalTokens": usage.input_tokens.saturating_add(usage.output_tokens)
                     .saturating_add(usage.cache_read_input_tokens)
-                    .saturating_add(usage.cache_creation_input_tokens)
+                    .saturating_add(usage.cache_creation_token_count())
                     .saturating_add(entry.extra_total_tokens),
                 "cost": entry.cost,
                 "pricingStatus": if entry.missing_pricing_model.is_some() { "missing" } else { "baked" },

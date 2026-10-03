@@ -661,8 +661,18 @@ fn load_claude_rows(kind: AgentReportKind, shared: &SharedArgs) -> Result<AgentR
 
     if shared.detail_bundle {
         let mut entries = claude::load_entries(shared, None)?;
+        let detected = !entries.is_empty();
         filter_loaded_entries_by_date(&mut entries, shared);
+        let summaries = crate::summarize_by_key(
+            &entries,
+            |entry| entry.date.clone(),
+            |date| (date.to_string(), None),
+        )?;
         super::details::capture("claude", &entries);
+        return Ok(AgentRows {
+            rows: summary_rows("claude", summaries, false),
+            detected,
+        });
     }
     let claude::DailySummaries {
         mut summaries,
