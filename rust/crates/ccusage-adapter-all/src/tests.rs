@@ -737,6 +737,62 @@ fn assert_detail_parity(shared: &SharedArgs) {
             .sum();
         assert!((cost - row.total_cost).abs() <= 1e-6 + row.total_cost.abs() * 1e-9);
     }
+    for row in &loaded.rows {
+        let agents = row
+            .agent_breakdowns
+            .as_deref()
+            .unwrap_or(std::slice::from_ref(row));
+        for agent in agents {
+            for model in &agent.model_breakdowns {
+                let matching = records
+                    .iter()
+                    .filter(|record| {
+                        record["day"] == row.period
+                            && record["tool"] == agent.agent
+                            && record["model"] == model.model_name
+                    })
+                    .collect::<Vec<_>>();
+                for field in [
+                    "inputTokens",
+                    "outputTokens",
+                    "cacheReadTokens",
+                    "cacheCreationTokens",
+                    "cacheCreation5mTokens",
+                    "cacheCreation1hTokens",
+                    "cacheCreationUnbucketedTokens",
+                ] {
+                    let total: u64 = matching
+                        .iter()
+                        .map(|record| record[field].as_u64().unwrap())
+                        .sum();
+                    let expected = match field {
+                        "inputTokens" => model.input_tokens,
+                        "outputTokens" => model.output_tokens,
+                        "cacheReadTokens" => model.cache_read_tokens,
+                        "cacheCreationTokens" => model.cache_creation_tokens,
+                        "cacheCreation5mTokens" => model.cache_creation_5m_tokens,
+                        "cacheCreation1hTokens" => model.cache_creation_1h_tokens,
+                        _ => model.cache_creation_unbucketed_tokens,
+                    };
+                    assert_eq!(
+                        total, expected,
+                        "{} {} {field}",
+                        agent.agent, model.model_name
+                    );
+                }
+                let cost: f64 = matching
+                    .iter()
+                    .map(|record| record["cost"].as_f64().unwrap())
+                    .sum();
+                assert!(
+                    (cost - model.cost).abs() <= 1e-6 + model.cost.abs() * 1e-9,
+                    "{} {} cost",
+                    agent.agent,
+                    model.model_name
+                );
+            }
+        }
+    }
     assert!(
         records
             .iter()

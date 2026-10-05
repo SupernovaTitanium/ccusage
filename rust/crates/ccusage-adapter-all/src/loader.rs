@@ -740,17 +740,6 @@ fn load_codex_rows(
                         record["sessionId"] = json!(event.session_id);
                         record["timestamp"] = json!(event.timestamp);
                         record["rawModel"] = json!(event.model);
-                        let model = event.model.as_deref().unwrap_or("unknown");
-                        if let Some(breakdown) =
-                            row.model_breakdowns.iter().find(|b| b.model_name == model)
-                        {
-                            record["cacheCreation5mTokens"] =
-                                json!(breakdown.cache_creation_5m_tokens);
-                            record["cacheCreation1hTokens"] =
-                                json!(breakdown.cache_creation_1h_tokens);
-                            record["cacheCreationUnbucketedTokens"] =
-                                json!(breakdown.cache_creation_unbucketed_tokens);
-                        }
                         record["detailLevel"] = json!("event");
                         record["attributionStatus"] = json!("accepted_replay_event");
                         record["pricingStatus"] = json!("baked_request_tier");
