@@ -5,7 +5,10 @@ expression: "report_from_rows(&weekly, AgentReportKind::Weekly)"
 ---
 {
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 75,
     "inputTokens": 230,
     "outputTokens": 35,
@@ -14,12 +17,18 @@ expression: "report_from_rows(&weekly, AgentReportKind::Weekly)"
   },
   "weekly": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 15,
+      "cacheCreationUnbucketedTokens": 15,
       "cacheReadTokens": 25,
       "inputTokens": 60,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 25,
           "cost": 0.00015549999999999999,
           "inputTokens": 60,
@@ -36,12 +45,18 @@ expression: "report_from_rows(&weekly, AgentReportKind::Weekly)"
       "week": "2098-12-28"
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 30,
+      "cacheCreationUnbucketedTokens": 30,
       "cacheReadTokens": 40,
       "inputTokens": 130,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 30,
+          "cacheCreationUnbucketedTokens": 30,
           "cacheReadTokens": 40,
           "cost": 0.0003224,
           "inputTokens": 130,
@@ -58,12 +73,18 @@ expression: "report_from_rows(&weekly, AgentReportKind::Weekly)"
       "week": "2099-01-11"
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "inputTokens": 40,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 10,
           "cost": 0.0000806,
           "inputTokens": 40,

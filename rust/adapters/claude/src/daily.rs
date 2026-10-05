@@ -633,7 +633,11 @@ impl DailyAccumulator {
             let breakdown = &mut self.breakdowns[index];
             breakdown.input_tokens += entry.usage.input_tokens;
             breakdown.output_tokens += entry.usage.output_tokens;
-            breakdown.cache_creation_tokens += entry.usage.cache_creation_token_count();
+            let (five_minute, one_hour, unbucketed) = entry.usage.cache_creation_buckets();
+            breakdown.cache_creation_5m_tokens += five_minute;
+            breakdown.cache_creation_1h_tokens += one_hour;
+            breakdown.cache_creation_unbucketed_tokens += unbucketed;
+            breakdown.cache_creation_tokens += five_minute + one_hour + unbucketed;
             breakdown.cache_read_tokens += entry.usage.cache_read_input_tokens;
             breakdown.cost += entry.cost;
             if entry.missing_pricing_model.is_some() {
@@ -655,6 +659,9 @@ impl DailyAccumulator {
             input_tokens: self.counts.input_tokens,
             output_tokens: self.counts.output_tokens,
             cache_creation_tokens: self.counts.cache_creation_tokens,
+            cache_creation_5m_tokens: self.counts.cache_creation_5m_tokens,
+            cache_creation_1h_tokens: self.counts.cache_creation_1h_tokens,
+            cache_creation_unbucketed_tokens: self.counts.cache_creation_unbucketed_tokens,
             cache_read_tokens: self.counts.cache_read_tokens,
             extra_total_tokens: 0,
             total_cost: self.cost,

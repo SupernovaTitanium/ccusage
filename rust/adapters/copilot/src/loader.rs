@@ -458,6 +458,9 @@ mod tests {
                 "inputTokens": 90,
                 "outputTokens": 50,
                 "cacheCreationTokens": 20,
+                "cacheCreation5mTokens": 0,
+                "cacheCreation1hTokens": 0,
+                "cacheCreationUnbucketedTokens": 20,
                 "cacheReadTokens": 10,
                 "cost": 290.0
             }])

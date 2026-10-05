@@ -1,13 +1,16 @@
 ---
-source: crates/ccusage/src/adapter/all/tests.rs
-assertion_line: 466
+source: crates/ccusage-adapter-all/src/tests.rs
+assertion_line: 696
 expression: "serde_json::to_string_pretty(&report).unwrap()"
 ---
 {
   "daily": [
     {
       "agent": "all",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "inputTokens": 100,
       "metadata": {
@@ -28,7 +31,10 @@ expression: "serde_json::to_string_pretty(&report).unwrap()"
   "monthly": [
     {
       "agent": "all",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "inputTokens": 100,
       "metadata": {
@@ -49,7 +55,10 @@ expression: "serde_json::to_string_pretty(&report).unwrap()"
   "session": [
     {
       "agent": "codex",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "inputTokens": 100,
       "metadata": {
@@ -66,7 +75,10 @@ expression: "serde_json::to_string_pretty(&report).unwrap()"
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 0,
+    "cacheCreationUnbucketedTokens": 0,
     "cacheReadTokens": 10,
     "inputTokens": 100,
     "outputTokens": 20,

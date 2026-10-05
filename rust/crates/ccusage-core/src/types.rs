@@ -39,13 +39,19 @@ pub struct TokenUsageRaw {
 }
 
 impl TokenUsageRaw {
-    pub fn cache_creation_token_count(&self) -> u64 {
+    pub fn cache_creation_buckets(&self) -> (u64, u64, u64) {
         if let Some(b) = &self.cache_creation {
-            b.ephemeral_5m_input_tokens
-                .saturating_add(b.ephemeral_1h_input_tokens)
+            (b.ephemeral_5m_input_tokens, b.ephemeral_1h_input_tokens, 0)
         } else {
-            self.cache_creation_input_tokens
+            (0, 0, self.cache_creation_input_tokens)
         }
+    }
+
+    pub fn cache_creation_token_count(&self) -> u64 {
+        let (five_minute, one_hour, unbucketed) = self.cache_creation_buckets();
+        five_minute
+            .saturating_add(one_hour)
+            .saturating_add(unbucketed)
     }
 }
 
@@ -55,6 +61,18 @@ pub struct CacheCreationRaw {
     pub(crate) ephemeral_5m_input_tokens: u64,
     #[serde(default)]
     pub(crate) ephemeral_1h_input_tokens: u64,
+}
+
+impl CacheCreationRaw {
+    pub fn from_ttl_buckets(
+        ephemeral_5m_input_tokens: u64,
+        ephemeral_1h_input_tokens: u64,
+    ) -> Self {
+        Self {
+            ephemeral_5m_input_tokens,
+            ephemeral_1h_input_tokens,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -70,6 +88,9 @@ pub struct TokenCounts {
     pub input_tokens: u64,
     pub output_tokens: u64,
     pub cache_creation_tokens: u64,
+    pub cache_creation_5m_tokens: u64,
+    pub cache_creation_1h_tokens: u64,
+    pub cache_creation_unbucketed_tokens: u64,
     pub cache_read_tokens: u64,
     pub(crate) extra_total_tokens: u64,
 }
@@ -78,9 +99,17 @@ impl TokenCounts {
     pub fn add_usage(&mut self, usage: TokenUsageRaw) {
         self.input_tokens = self.input_tokens.saturating_add(usage.input_tokens);
         self.output_tokens = self.output_tokens.saturating_add(usage.output_tokens);
+        let (five_minute, one_hour, unbucketed) = usage.cache_creation_buckets();
+        self.cache_creation_5m_tokens = self.cache_creation_5m_tokens.saturating_add(five_minute);
+        self.cache_creation_1h_tokens = self.cache_creation_1h_tokens.saturating_add(one_hour);
+        self.cache_creation_unbucketed_tokens = self
+            .cache_creation_unbucketed_tokens
+            .saturating_add(unbucketed);
         self.cache_creation_tokens = self
             .cache_creation_tokens
-            .saturating_add(usage.cache_creation_token_count());
+            .saturating_add(five_minute)
+            .saturating_add(one_hour)
+            .saturating_add(unbucketed);
         self.cache_read_tokens = self
             .cache_read_tokens
             .saturating_add(usage.cache_read_input_tokens);
@@ -102,11 +131,13 @@ pub struct ModelBreakdown {
     pub input_tokens: u64,
     pub output_tokens: u64,
     pub cache_creation_tokens: u64,
+    pub cache_creation_5m_tokens: u64,
+    pub cache_creation_1h_tokens: u64,
+    pub cache_creation_unbucketed_tokens: u64,
     pub cache_read_tokens: u64,
     #[serde(skip_serializing)]
     pub extra_total_tokens: u64,
     pub cost: f64,
-    /// Present in JSON only when true, so priced breakdowns keep their shape.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub missing_pricing: bool,
 }
@@ -164,6 +195,9 @@ pub struct UsageSummary {
     pub input_tokens: u64,
     pub output_tokens: u64,
     pub cache_creation_tokens: u64,
+    pub cache_creation_5m_tokens: u64,
+    pub cache_creation_1h_tokens: u64,
+    pub cache_creation_unbucketed_tokens: u64,
     pub cache_read_tokens: u64,
     #[serde(skip_serializing)]
     pub extra_total_tokens: u64,
@@ -199,6 +233,9 @@ mod tests {
             input_tokens: u64::MAX,
             output_tokens: u64::MAX,
             cache_creation_tokens: u64::MAX,
+            cache_creation_5m_tokens: u64::MAX,
+            cache_creation_1h_tokens: u64::MAX,
+            cache_creation_unbucketed_tokens: u64::MAX,
             cache_read_tokens: u64::MAX,
             extra_total_tokens: u64::MAX,
         };

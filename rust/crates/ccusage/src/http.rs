@@ -755,13 +755,15 @@ mod tests {
 
     #[test]
     fn cache_dir_prefers_xdg_then_home() {
+        let xdg = std::env::temp_dir().join("ccusage-xdg");
+        let home = std::env::temp_dir().join("ccusage-home");
         assert_eq!(
-            cache_dir_under(Some(PathBuf::from("/xdg")), Some(PathBuf::from("/home/u"))),
-            Some(PathBuf::from("/xdg/ccusage/http-cache")),
+            cache_dir_under(Some(xdg.clone()), Some(home.clone())),
+            Some(xdg.join("ccusage/http-cache")),
         );
         assert_eq!(
-            cache_dir_under(None, Some(PathBuf::from("/home/u"))),
-            Some(PathBuf::from("/home/u/.cache/ccusage/http-cache")),
+            cache_dir_under(None, Some(home.clone())),
+            Some(home.join(".cache/ccusage/http-cache")),
         );
         assert_eq!(cache_dir_under(Some(PathBuf::from("relative")), None), None);
     }

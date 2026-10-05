@@ -1,9 +1,12 @@
 ---
-source: crates/ccusage/src/output.rs
+source: crates/ccusage-core/src/output.rs
 expression: "totals_json(&[first, second])"
 ---
 {
+  "cacheCreation1hTokens": 0,
+  "cacheCreation5mTokens": 0,
   "cacheCreationTokens": 89,
+  "cacheCreationUnbucketedTokens": 178,
   "cacheReadTokens": 10,
   "credits": 1.25,
   "inputTokens": 1234,

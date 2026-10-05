@@ -411,9 +411,9 @@ fn statusline_active_block_keeps_anchors_from_older_files() {
     )
     .unwrap();
     let files = write_block_chain(&fixture, now_ms - 60 * 60 * 1000, 71);
+    let transcript_path = serde_json::to_string(&files.last().unwrap().to_string_lossy()).unwrap();
     let hook = format!(
-        r#"{{"session_id":"session-chain","transcript_path":"{}","model":{{"display_name":"Model"}},"cost":{{"total_cost_usd":0}},"context_window":{{"total_input_tokens":1,"context_window_size":100}}}}"#,
-        files.last().unwrap().display()
+        r#"{{"session_id":"session-chain","transcript_path":{transcript_path},"model":{{"display_name":"Model"}},"cost":{{"total_cost_usd":0}},"context_window":{{"total_input_tokens":1,"context_window_size":100}}}}"#,
     );
     let fresh_mtime = u64::try_from(now_ms / 1000).unwrap();
 
@@ -504,9 +504,9 @@ fn statusline_keeps_the_current_block_before_future_dated_entries() {
         ]
         .join("\n"),
     );
+    let transcript_path = serde_json::to_string(&transcript.to_string_lossy()).unwrap();
     let hook = format!(
-        r#"{{"session_id":"session-now","transcript_path":"{}","model":{{"display_name":"Model"}},"cost":{{"total_cost_usd":0}},"context_window":{{"total_input_tokens":1,"context_window_size":100}}}}"#,
-        transcript.display()
+        r#"{{"session_id":"session-now","transcript_path":{transcript_path},"model":{{"display_name":"Model"}},"cost":{{"total_cost_usd":0}},"context_window":{{"total_input_tokens":1,"context_window_size":100}}}}"#,
     );
 
     let output = run_ccusage(

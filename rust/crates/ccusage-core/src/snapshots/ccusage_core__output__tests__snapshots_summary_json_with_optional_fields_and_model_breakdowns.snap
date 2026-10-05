@@ -1,16 +1,22 @@
 ---
-source: crates/ccusage/src/output.rs
+source: crates/ccusage-core/src/output.rs
 expression: summary_json(&row)
 ---
 {
+  "cacheCreation1hTokens": 0,
+  "cacheCreation5mTokens": 0,
   "cacheCreationTokens": 89,
+  "cacheCreationUnbucketedTokens": 89,
   "cacheReadTokens": 10,
   "credits": 1.25,
   "date": "2026-01-02",
   "inputTokens": 1234,
   "modelBreakdowns": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 50,
+      "cacheCreationUnbucketedTokens": 50,
       "cacheReadTokens": 10,
       "cost": 0.3,
       "inputTokens": 900,
@@ -18,7 +24,10 @@ expression: summary_json(&row)
       "outputTokens": 300
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 39,
+      "cacheCreationUnbucketedTokens": 39,
       "cacheReadTokens": 0,
       "cost": 0.12,
       "inputTokens": 334,

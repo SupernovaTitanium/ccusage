@@ -12,6 +12,9 @@ pub(super) struct AllRow {
     pub(super) input_tokens: u64,
     pub(super) output_tokens: u64,
     pub(super) cache_creation_tokens: u64,
+    pub(super) cache_creation_5m_tokens: u64,
+    pub(super) cache_creation_1h_tokens: u64,
+    pub(super) cache_creation_unbucketed_tokens: u64,
     pub(super) cache_read_tokens: u64,
     pub(super) total_tokens: u64,
     pub(super) total_cost: f64,
@@ -69,6 +72,9 @@ pub(super) struct AllAccumulator {
     input_tokens: u64,
     output_tokens: u64,
     cache_creation_tokens: u64,
+    cache_creation_5m_tokens: u64,
+    cache_creation_1h_tokens: u64,
+    cache_creation_unbucketed_tokens: u64,
     cache_read_tokens: u64,
     total_tokens: u64,
     total_cost: f64,
@@ -85,6 +91,15 @@ impl AllAccumulator {
         self.cache_creation_tokens = self
             .cache_creation_tokens
             .saturating_add(row.cache_creation_tokens);
+        self.cache_creation_5m_tokens = self
+            .cache_creation_5m_tokens
+            .saturating_add(row.cache_creation_5m_tokens);
+        self.cache_creation_1h_tokens = self
+            .cache_creation_1h_tokens
+            .saturating_add(row.cache_creation_1h_tokens);
+        self.cache_creation_unbucketed_tokens = self
+            .cache_creation_unbucketed_tokens
+            .saturating_add(row.cache_creation_unbucketed_tokens);
         self.cache_read_tokens = self.cache_read_tokens.saturating_add(row.cache_read_tokens);
         self.total_tokens = self.total_tokens.saturating_add(row.total_tokens);
         self.total_cost += row.total_cost;
@@ -123,6 +138,9 @@ impl AllAccumulator {
             input_tokens: self.input_tokens,
             output_tokens: self.output_tokens,
             cache_creation_tokens: self.cache_creation_tokens,
+            cache_creation_5m_tokens: self.cache_creation_5m_tokens,
+            cache_creation_1h_tokens: self.cache_creation_1h_tokens,
+            cache_creation_unbucketed_tokens: self.cache_creation_unbucketed_tokens,
             cache_read_tokens: self.cache_read_tokens,
             total_tokens: self.total_tokens,
             total_cost: self.total_cost,
@@ -140,6 +158,15 @@ fn merge_agent_breakdown(target: &mut AllRow, source: AllRow) {
     target.cache_creation_tokens = target
         .cache_creation_tokens
         .saturating_add(source.cache_creation_tokens);
+    target.cache_creation_5m_tokens = target
+        .cache_creation_5m_tokens
+        .saturating_add(source.cache_creation_5m_tokens);
+    target.cache_creation_1h_tokens = target
+        .cache_creation_1h_tokens
+        .saturating_add(source.cache_creation_1h_tokens);
+    target.cache_creation_unbucketed_tokens = target
+        .cache_creation_unbucketed_tokens
+        .saturating_add(source.cache_creation_unbucketed_tokens);
     target.cache_read_tokens = target
         .cache_read_tokens
         .saturating_add(source.cache_read_tokens);
@@ -173,6 +200,15 @@ fn merge_model_breakdowns(
         b.cache_creation_tokens = b
             .cache_creation_tokens
             .saturating_add(item.cache_creation_tokens);
+        b.cache_creation_5m_tokens = b
+            .cache_creation_5m_tokens
+            .saturating_add(item.cache_creation_5m_tokens);
+        b.cache_creation_1h_tokens = b
+            .cache_creation_1h_tokens
+            .saturating_add(item.cache_creation_1h_tokens);
+        b.cache_creation_unbucketed_tokens = b
+            .cache_creation_unbucketed_tokens
+            .saturating_add(item.cache_creation_unbucketed_tokens);
         b.cache_read_tokens = b.cache_read_tokens.saturating_add(item.cache_read_tokens);
         b.extra_total_tokens = b.extra_total_tokens.saturating_add(item.extra_total_tokens);
         b.cost += item.cost;
@@ -201,6 +237,15 @@ fn aggregate_model_breakdowns(rows: &[AllRow]) -> Vec<ModelBreakdown> {
             b.cache_creation_tokens = b
                 .cache_creation_tokens
                 .saturating_add(item.cache_creation_tokens);
+            b.cache_creation_5m_tokens = b
+                .cache_creation_5m_tokens
+                .saturating_add(item.cache_creation_5m_tokens);
+            b.cache_creation_1h_tokens = b
+                .cache_creation_1h_tokens
+                .saturating_add(item.cache_creation_1h_tokens);
+            b.cache_creation_unbucketed_tokens = b
+                .cache_creation_unbucketed_tokens
+                .saturating_add(item.cache_creation_unbucketed_tokens);
             b.cache_read_tokens = b.cache_read_tokens.saturating_add(item.cache_read_tokens);
             b.extra_total_tokens = b.extra_total_tokens.saturating_add(item.extra_total_tokens);
             b.cost += item.cost;

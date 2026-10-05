@@ -164,6 +164,9 @@ fn agent_json(row: &AllRow) -> Value {
         "inputTokens": row.input_tokens,
         "outputTokens": row.output_tokens,
         "cacheCreationTokens": row.cache_creation_tokens,
+        "cacheCreation5mTokens": row.cache_creation_5m_tokens,
+        "cacheCreation1hTokens": row.cache_creation_1h_tokens,
+        "cacheCreationUnbucketedTokens": row.cache_creation_unbucketed_tokens,
         "cacheReadTokens": row.cache_read_tokens,
         "totalTokens": row.total_tokens,
         "totalCost": json_float(row.total_cost),
@@ -185,6 +188,9 @@ fn totals_json(rows: &[AllRow]) -> Value {
             .iter()
             .map(|row| row.cache_creation_tokens)
             .fold(0, u64::saturating_add),
+        "cacheCreation5mTokens": rows.iter().map(|row| row.cache_creation_5m_tokens).fold(0, u64::saturating_add),
+        "cacheCreation1hTokens": rows.iter().map(|row| row.cache_creation_1h_tokens).fold(0, u64::saturating_add),
+        "cacheCreationUnbucketedTokens": rows.iter().map(|row| row.cache_creation_unbucketed_tokens).fold(0, u64::saturating_add),
         "cacheReadTokens": rows
             .iter()
             .map(|row| row.cache_read_tokens)
@@ -353,6 +359,9 @@ fn all_rows_as_usage_summaries(rows: &[AllRow]) -> Vec<UsageSummary> {
             input_tokens: row.input_tokens,
             output_tokens: row.output_tokens,
             cache_creation_tokens: row.cache_creation_tokens,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: row.cache_creation_tokens,
             cache_read_tokens: row.cache_read_tokens,
             extra_total_tokens: row.total_tokens.saturating_sub(component_total_tokens(row)),
             total_cost: row.total_cost,

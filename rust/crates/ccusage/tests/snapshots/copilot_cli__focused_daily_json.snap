@@ -1,19 +1,26 @@
 ---
 source: crates/ccusage/tests/copilot_cli.rs
+assertion_line: 12
 expression: "format!(\"Daily JSON\\n{}\", run_cli(&fixture, [\"copilot\", \"daily\", \"--json\"]),)"
 ---
 Daily JSON
 {
   "daily": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 20,
+      "cacheCreationUnbucketedTokens": 20,
       "cacheReadTokens": 10,
       "date": "2026-01-02",
       "inputTokens": 70,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 20,
+          "cacheCreationUnbucketedTokens": 20,
           "cacheReadTokens": 10,
           "cost": 0.00173,
           "inputTokens": 70,
@@ -29,14 +36,20 @@ Daily JSON
       "totalTokens": 150
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 10,
+      "cacheCreationUnbucketedTokens": 10,
       "cacheReadTokens": 10,
       "date": "2026-01-03",
       "inputTokens": 93,
       "messageCount": 3,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 10,
+          "cacheCreationUnbucketedTokens": 10,
           "cacheReadTokens": 10,
           "cost": 0.0016325,
           "inputTokens": 93,
@@ -52,13 +65,19 @@ Daily JSON
       "totalTokens": 157
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 15,
+      "cacheCreationUnbucketedTokens": 15,
       "cacheReadTokens": 10,
       "date": "2026-02-01",
       "inputTokens": 65,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 10,
           "cost": 0.000661875,
           "inputTokens": 65,
@@ -74,14 +93,20 @@ Daily JSON
       "totalTokens": 120
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 0,
       "date": "2026-02-02",
       "inputTokens": 7,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "cost": 0.0001375,
           "inputTokens": 7,
@@ -98,7 +123,10 @@ Daily JSON
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 30,
     "inputTokens": 235,
     "outputTokens": 132,

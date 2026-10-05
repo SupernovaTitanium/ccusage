@@ -29,6 +29,9 @@ pub fn summary_json(row: &UsageSummary) -> Value {
         "inputTokens": row.input_tokens,
         "outputTokens": row.output_tokens,
         "cacheCreationTokens": row.cache_creation_tokens,
+        "cacheCreation5mTokens": row.cache_creation_5m_tokens,
+        "cacheCreation1hTokens": row.cache_creation_1h_tokens,
+        "cacheCreationUnbucketedTokens": row.cache_creation_unbucketed_tokens,
         "cacheReadTokens": row.cache_read_tokens,
         "totalTokens": row.total_tokens(),
         "totalCost": row.total_cost,
@@ -61,6 +64,9 @@ pub fn session_summary_json(row: &UsageSummary) -> Value {
         "inputTokens": row.input_tokens,
         "outputTokens": row.output_tokens,
         "cacheCreationTokens": row.cache_creation_tokens,
+        "cacheCreation5mTokens": row.cache_creation_5m_tokens,
+        "cacheCreation1hTokens": row.cache_creation_1h_tokens,
+        "cacheCreationUnbucketedTokens": row.cache_creation_unbucketed_tokens,
         "cacheReadTokens": row.cache_read_tokens,
         "totalTokens": row.total_tokens(),
         "totalCost": row.total_cost,
@@ -89,6 +95,18 @@ pub fn totals_json(rows: &[UsageSummary]) -> Value {
         .iter()
         .map(|row| row.cache_creation_tokens)
         .fold(0, u64::saturating_add);
+    let cache_create_5m = rows
+        .iter()
+        .map(|row| row.cache_creation_5m_tokens)
+        .fold(0, u64::saturating_add);
+    let cache_create_1h = rows
+        .iter()
+        .map(|row| row.cache_creation_1h_tokens)
+        .fold(0, u64::saturating_add);
+    let cache_create_unbucketed = rows
+        .iter()
+        .map(|row| row.cache_creation_unbucketed_tokens)
+        .fold(0, u64::saturating_add);
     let cache_read = rows
         .iter()
         .map(|row| row.cache_read_tokens)
@@ -101,6 +119,9 @@ pub fn totals_json(rows: &[UsageSummary]) -> Value {
         "inputTokens": input,
         "outputTokens": output,
         "cacheCreationTokens": cache_create,
+        "cacheCreation5mTokens": cache_create_5m,
+        "cacheCreation1hTokens": cache_create_1h,
+        "cacheCreationUnbucketedTokens": cache_create_unbucketed,
         "cacheReadTokens": cache_read,
         "totalTokens": input
             .saturating_add(output)
@@ -659,6 +680,9 @@ mod tests {
             input_tokens: 100,
             output_tokens: 50,
             cache_creation_tokens: 10,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 10,
             cache_read_tokens: 5,
             extra_total_tokens: 7,
             total_cost: 0.25,
@@ -686,6 +710,9 @@ mod tests {
             input_tokens: 100,
             output_tokens: 50,
             cache_creation_tokens: 0,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 0,
             cache_read_tokens: 0,
             extra_total_tokens: 0,
             total_cost: 0.25,
@@ -707,6 +734,9 @@ mod tests {
             input_tokens: 100,
             output_tokens: 50,
             cache_creation_tokens: 0,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 0,
             cache_read_tokens: 0,
             extra_total_tokens: 0,
             cost: if missing_pricing { 0.0 } else { 0.25 },
@@ -916,6 +946,9 @@ mod tests {
             input_tokens: 100,
             output_tokens: 50,
             cache_creation_tokens: 10,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 10,
             cache_read_tokens: 5,
             extra_total_tokens: 7,
             cost: 0.25,
@@ -937,6 +970,9 @@ mod tests {
             input_tokens: 1_234,
             output_tokens: 567,
             cache_creation_tokens: 89,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 89,
             cache_read_tokens: 10,
             extra_total_tokens: 0,
             total_cost: 0.42,
@@ -952,6 +988,9 @@ mod tests {
                     input_tokens: 900,
                     output_tokens: 300,
                     cache_creation_tokens: 50,
+                    cache_creation_5m_tokens: 0,
+                    cache_creation_1h_tokens: 0,
+                    cache_creation_unbucketed_tokens: 50,
                     cache_read_tokens: 10,
                     extra_total_tokens: 0,
                     cost: 0.3,
@@ -962,6 +1001,9 @@ mod tests {
                     input_tokens: 334,
                     output_tokens: 267,
                     cache_creation_tokens: 39,
+                    cache_creation_5m_tokens: 0,
+                    cache_creation_1h_tokens: 0,
+                    cache_creation_unbucketed_tokens: 39,
                     cache_read_tokens: 0,
                     extra_total_tokens: 0,
                     cost: 0.12,

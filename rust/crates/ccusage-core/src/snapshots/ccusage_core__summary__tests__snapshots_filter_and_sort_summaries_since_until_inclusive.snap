@@ -1,5 +1,5 @@
 ---
-source: crates/ccusage/src/summary.rs
+source: crates/ccusage-core/src/summary.rs
 expression: rows
 ---
 [
@@ -8,6 +8,9 @@ expression: rows
     "inputTokens": 10,
     "outputTokens": 10,
     "cacheCreationTokens": 1,
+    "cacheCreation5mTokens": 0,
+    "cacheCreation1hTokens": 0,
+    "cacheCreationUnbucketedTokens": 1,
     "cacheReadTokens": 2,
     "totalCost": 0.5,
     "credits": 0.5,
@@ -21,6 +24,9 @@ expression: rows
         "inputTokens": 10,
         "outputTokens": 10,
         "cacheCreationTokens": 1,
+        "cacheCreation5mTokens": 0,
+        "cacheCreation1hTokens": 0,
+        "cacheCreationUnbucketedTokens": 1,
         "cacheReadTokens": 2,
         "cost": 0.5
       }
@@ -31,6 +37,9 @@ expression: rows
     "inputTokens": 2,
     "outputTokens": 10,
     "cacheCreationTokens": 1,
+    "cacheCreation5mTokens": 0,
+    "cacheCreation1hTokens": 0,
+    "cacheCreationUnbucketedTokens": 1,
     "cacheReadTokens": 2,
     "totalCost": 0.25,
     "credits": 0.5,
@@ -44,6 +53,9 @@ expression: rows
         "inputTokens": 2,
         "outputTokens": 10,
         "cacheCreationTokens": 1,
+        "cacheCreation5mTokens": 0,
+        "cacheCreation1hTokens": 0,
+        "cacheCreationUnbucketedTokens": 1,
         "cacheReadTokens": 2,
         "cost": 0.25
       }

@@ -22,6 +22,8 @@ pub(super) fn capture(agent: &str, entries: &[LoadedEntry]) {
         let mut records = records.borrow_mut();
         for entry in entries {
             let usage = &entry.data.message.usage;
+            let (cache_creation_5m, cache_creation_1h, cache_creation_unbucketed) =
+                usage.cache_creation_buckets();
             let model = entry.model.as_deref().or(entry.data.message.model.as_deref()).unwrap_or("unknown");
             // Native IDs are preserved when available. Otherwise the accepted timestamp
             // and session form an explicit derived identity (no invented parent relation).
@@ -35,6 +37,9 @@ pub(super) fn capture(agent: &str, entries: &[LoadedEntry]) {
                 "inputTokens": usage.input_tokens, "outputTokens": usage.output_tokens,
                 "cacheReadTokens": usage.cache_read_input_tokens,
                 "cacheCreationTokens": usage.cache_creation_token_count(),
+                "cacheCreation5mTokens": cache_creation_5m,
+                "cacheCreation1hTokens": cache_creation_1h,
+                "cacheCreationUnbucketedTokens": cache_creation_unbucketed,
                 "totalTokens": usage.input_tokens.saturating_add(usage.output_tokens)
                     .saturating_add(usage.cache_read_input_tokens)
                     .saturating_add(usage.cache_creation_token_count())
@@ -71,6 +76,9 @@ pub(super) fn bundle(rows: &[super::types::AllRow], mut records: Vec<Value>) -> 
                     "timestamp": null, "day": row.period, "rawModel": null, "model": model.model_name,
                     "inputTokens": model.input_tokens, "outputTokens": model.output_tokens,
                     "cacheReadTokens": model.cache_read_tokens, "cacheCreationTokens": model.cache_creation_tokens,
+                    "cacheCreation5mTokens": model.cache_creation_5m_tokens,
+                    "cacheCreation1hTokens": model.cache_creation_1h_tokens,
+                    "cacheCreationUnbucketedTokens": model.cache_creation_unbucketed_tokens,
                     "totalTokens": model.input_tokens.saturating_add(model.output_tokens)
                         .saturating_add(model.cache_read_tokens).saturating_add(model.cache_creation_tokens)
                         .saturating_add(model.extra_total_tokens),

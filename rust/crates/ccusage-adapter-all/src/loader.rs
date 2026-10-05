@@ -740,6 +740,17 @@ fn load_codex_rows(
                         record["sessionId"] = json!(event.session_id);
                         record["timestamp"] = json!(event.timestamp);
                         record["rawModel"] = json!(event.model);
+                        let model = event.model.as_deref().unwrap_or("unknown");
+                        if let Some(breakdown) =
+                            row.model_breakdowns.iter().find(|b| b.model_name == model)
+                        {
+                            record["cacheCreation5mTokens"] =
+                                json!(breakdown.cache_creation_5m_tokens);
+                            record["cacheCreation1hTokens"] =
+                                json!(breakdown.cache_creation_1h_tokens);
+                            record["cacheCreationUnbucketedTokens"] =
+                                json!(breakdown.cache_creation_unbucketed_tokens);
+                        }
                         record["detailLevel"] = json!("event");
                         record["attributionStatus"] = json!("accepted_replay_event");
                         record["pricingStatus"] = json!("baked_request_tier");
@@ -860,6 +871,9 @@ fn summary_rows(
                 input_tokens: summary.input_tokens,
                 output_tokens: summary.output_tokens,
                 cache_creation_tokens: summary.cache_creation_tokens,
+                cache_creation_5m_tokens: summary.cache_creation_5m_tokens,
+                cache_creation_1h_tokens: summary.cache_creation_1h_tokens,
+                cache_creation_unbucketed_tokens: summary.cache_creation_unbucketed_tokens,
                 cache_read_tokens: summary.cache_read_tokens,
                 total_tokens,
                 total_cost: summary.total_cost,
@@ -917,6 +931,9 @@ where
                 input_tokens: input,
                 output_tokens: usage.output_tokens,
                 cache_creation_tokens: usage.cache_creation_tokens,
+                cache_creation_5m_tokens: 0,
+                cache_creation_1h_tokens: 0,
+                cache_creation_unbucketed_tokens: usage.cache_creation_tokens,
                 cache_read_tokens: usage.cached_input_tokens,
                 extra_total_tokens: usage.total_tokens.saturating_sub(
                     input
@@ -942,6 +959,9 @@ where
         ),
         output_tokens: group.output_tokens,
         cache_creation_tokens: group.cache_creation_tokens,
+        cache_creation_5m_tokens: 0,
+        cache_creation_1h_tokens: 0,
+        cache_creation_unbucketed_tokens: group.cache_creation_tokens,
         cache_read_tokens: group.cached_input_tokens,
         total_tokens: group.total_tokens,
         total_cost: codex::calculate_group_cost(group, pricing, speed),
@@ -995,6 +1015,9 @@ mod tests {
             input_tokens,
             output_tokens: 0,
             cache_creation_tokens: 0,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 0,
             cache_read_tokens: 0,
             extra_total_tokens: 0,
             total_cost: 0.0,

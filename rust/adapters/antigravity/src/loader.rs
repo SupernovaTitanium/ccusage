@@ -795,8 +795,17 @@ mod tests {
         let error = load_entries(&shared(true), &PricingMap::load_embedded()).unwrap_err();
         let message = error.to_string();
 
-        assert!(message.contains(not_a_database.to_string_lossy().as_ref()));
-        assert!(message.contains("open") || message.contains("database"));
+        assert!(
+            message.contains(
+                not_a_database
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_ref()
+            ),
+            "{message}"
+        );
+        assert!(message.contains("database"), "{message}");
     }
 
     #[test]

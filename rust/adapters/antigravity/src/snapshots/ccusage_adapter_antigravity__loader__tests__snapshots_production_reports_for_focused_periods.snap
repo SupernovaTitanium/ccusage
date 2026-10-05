@@ -1,5 +1,6 @@
 ---
 source: adapters/antigravity/src/loader.rs
+assertion_line: 717
 expression: reports
 ---
 {
@@ -7,13 +8,19 @@ expression: reports
     "json": {
       "daily": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 5,
+          "cacheCreationUnbucketedTokens": 5,
           "cacheReadTokens": 20,
           "date": "2026-05-05",
           "inputTokens": 100,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 5,
+              "cacheCreationUnbucketedTokens": 5,
               "cacheReadTokens": 20,
               "cost": 0.000187,
               "inputTokens": 100,
@@ -29,13 +36,19 @@ expression: reports
           "totalTokens": 165
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "date": "2026-06-08",
           "inputTokens": 200,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 0,
+              "cacheCreationUnbucketedTokens": 0,
               "cacheReadTokens": 0,
               "cost": 0.0008,
               "inputTokens": 200,
@@ -52,7 +65,10 @@ expression: reports
         }
       ],
       "totals": {
+        "cacheCreation1hTokens": 0,
+        "cacheCreation5mTokens": 0,
         "cacheCreationTokens": 5,
+        "cacheCreationUnbucketedTokens": 5,
         "cacheReadTokens": 20,
         "inputTokens": 300,
         "outputTokens": 80,
@@ -93,12 +109,18 @@ expression: reports
     "json": {
       "monthly": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 5,
+          "cacheCreationUnbucketedTokens": 5,
           "cacheReadTokens": 20,
           "inputTokens": 100,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 5,
+              "cacheCreationUnbucketedTokens": 5,
               "cacheReadTokens": 20,
               "cost": 0.000187,
               "inputTokens": 100,
@@ -115,12 +137,18 @@ expression: reports
           "totalTokens": 165
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "inputTokens": 200,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 0,
+              "cacheCreationUnbucketedTokens": 0,
               "cacheReadTokens": 0,
               "cost": 0.0008,
               "inputTokens": 200,
@@ -138,7 +166,10 @@ expression: reports
         }
       ],
       "totals": {
+        "cacheCreation1hTokens": 0,
+        "cacheCreation5mTokens": 0,
         "cacheCreationTokens": 5,
+        "cacheCreationUnbucketedTokens": 5,
         "cacheReadTokens": 20,
         "inputTokens": 300,
         "outputTokens": 80,
@@ -179,14 +210,20 @@ expression: reports
     "json": {
       "sessions": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 5,
+          "cacheCreationUnbucketedTokens": 5,
           "cacheReadTokens": 20,
           "firstActivity": "2026-05-05T16:53:20.000Z",
           "inputTokens": 100,
           "lastActivity": "2026-05-05T16:53:20.000Z",
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 5,
+              "cacheCreationUnbucketedTokens": 5,
               "cacheReadTokens": 20,
               "cost": 0.000187,
               "inputTokens": 100,
@@ -204,14 +241,20 @@ expression: reports
           "totalTokens": 165
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "firstActivity": "2026-06-08T00:00:00.000Z",
           "inputTokens": 200,
           "lastActivity": "2026-06-08T00:00:00.000Z",
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 0,
+              "cacheCreationUnbucketedTokens": 0,
               "cacheReadTokens": 0,
               "cost": 0.0008,
               "inputTokens": 200,
@@ -230,7 +273,10 @@ expression: reports
         }
       ],
       "totals": {
+        "cacheCreation1hTokens": 0,
+        "cacheCreation5mTokens": 0,
         "cacheCreationTokens": 5,
+        "cacheCreationUnbucketedTokens": 5,
         "cacheReadTokens": 20,
         "inputTokens": 300,
         "outputTokens": 80,
@@ -270,7 +316,10 @@ expression: reports
   "weekly": {
     "json": {
       "totals": {
+        "cacheCreation1hTokens": 0,
+        "cacheCreation5mTokens": 0,
         "cacheCreationTokens": 5,
+        "cacheCreationUnbucketedTokens": 5,
         "cacheReadTokens": 20,
         "inputTokens": 300,
         "outputTokens": 80,
@@ -279,12 +328,18 @@ expression: reports
       },
       "weekly": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 5,
+          "cacheCreationUnbucketedTokens": 5,
           "cacheReadTokens": 20,
           "inputTokens": 100,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 5,
+              "cacheCreationUnbucketedTokens": 5,
               "cacheReadTokens": 20,
               "cost": 0.000187,
               "inputTokens": 100,
@@ -301,12 +356,18 @@ expression: reports
           "week": "2026-05-04"
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "inputTokens": 200,
           "modelBreakdowns": [
             {
+              "cacheCreation1hTokens": 0,
+              "cacheCreation5mTokens": 0,
               "cacheCreationTokens": 0,
+              "cacheCreationUnbucketedTokens": 0,
               "cacheReadTokens": 0,
               "cost": 0.0008,
               "inputTokens": 200,

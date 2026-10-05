@@ -1,18 +1,25 @@
 ---
 source: adapters/zcode/src/report.rs
+assertion_line: 154
 expression: "report_from_rows(&session, AgentReportKind::Session)"
 ---
 {
   "sessions": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 45,
+      "cacheCreationUnbucketedTokens": 45,
       "cacheReadTokens": 65,
       "firstActivity": "2099-01-02T00:00:00.000Z",
       "inputTokens": 190,
       "lastActivity": "2099-01-15T12:00:00.000Z",
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 30,
+          "cacheCreationUnbucketedTokens": 30,
           "cacheReadTokens": 40,
           "cost": 0.0003224,
           "inputTokens": 130,
@@ -20,7 +27,10 @@ expression: "report_from_rows(&session, AgentReportKind::Session)"
           "outputTokens": 20
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 25,
           "cost": 0.00015549999999999999,
           "inputTokens": 60,
@@ -39,14 +49,20 @@ expression: "report_from_rows(&session, AgentReportKind::Session)"
       "totalTokens": 330
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "firstActivity": "2099-02-01T00:00:00.000Z",
       "inputTokens": 40,
       "lastActivity": "2099-02-01T00:00:00.000Z",
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 10,
           "cost": 0.0000806,
           "inputTokens": 40,
@@ -65,7 +81,10 @@ expression: "report_from_rows(&session, AgentReportKind::Session)"
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 75,
     "inputTokens": 230,
     "outputTokens": 35,

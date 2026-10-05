@@ -139,6 +139,9 @@ mod tests {
                 "inputTokens": 100,
                 "outputTokens": 50,
                 "cacheCreationTokens": 0,
+                "cacheCreation5mTokens": 0,
+                "cacheCreation1hTokens": 0,
+                "cacheCreationUnbucketedTokens": 0,
                 "cacheReadTokens": 5,
                 "cost": 0.0
             }])
@@ -176,6 +179,9 @@ mod tests {
             input_tokens: 0,
             output_tokens: 0,
             cache_creation_tokens: 0,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 0,
             cache_read_tokens: 0,
             extra_total_tokens: 0,
             total_cost: 0.0,

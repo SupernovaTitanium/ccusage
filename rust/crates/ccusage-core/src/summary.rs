@@ -80,9 +80,20 @@ impl UsageAccumulator {
             let breakdown = &mut self.breakdowns[index];
             breakdown.input_tokens = breakdown.input_tokens.saturating_add(usage.input_tokens);
             breakdown.output_tokens = breakdown.output_tokens.saturating_add(usage.output_tokens);
+            let (five_minute, one_hour, unbucketed) = usage.cache_creation_buckets();
+            breakdown.cache_creation_5m_tokens = breakdown
+                .cache_creation_5m_tokens
+                .saturating_add(five_minute);
+            breakdown.cache_creation_1h_tokens =
+                breakdown.cache_creation_1h_tokens.saturating_add(one_hour);
+            breakdown.cache_creation_unbucketed_tokens = breakdown
+                .cache_creation_unbucketed_tokens
+                .saturating_add(unbucketed);
             breakdown.cache_creation_tokens = breakdown
                 .cache_creation_tokens
-                .saturating_add(usage.cache_creation_token_count());
+                .saturating_add(five_minute)
+                .saturating_add(one_hour)
+                .saturating_add(unbucketed);
             breakdown.cache_read_tokens = breakdown
                 .cache_read_tokens
                 .saturating_add(usage.cache_read_input_tokens);
@@ -109,6 +120,9 @@ impl UsageAccumulator {
             input_tokens: self.counts.input_tokens,
             output_tokens: self.counts.output_tokens,
             cache_creation_tokens: self.counts.cache_creation_tokens,
+            cache_creation_5m_tokens: self.counts.cache_creation_5m_tokens,
+            cache_creation_1h_tokens: self.counts.cache_creation_1h_tokens,
+            cache_creation_unbucketed_tokens: self.counts.cache_creation_unbucketed_tokens,
             cache_read_tokens: self.counts.cache_read_tokens,
             extra_total_tokens: self.counts.extra_total_tokens,
             total_cost: self.cost,
@@ -217,6 +231,9 @@ fn aggregate_summaries(rows: &[&UsageSummary]) -> UsageSummary {
         input_tokens: 0,
         output_tokens: 0,
         cache_creation_tokens: 0,
+        cache_creation_5m_tokens: 0,
+        cache_creation_1h_tokens: 0,
+        cache_creation_unbucketed_tokens: 0,
         cache_read_tokens: 0,
         extra_total_tokens: 0,
         total_cost: 0.0,
@@ -236,6 +253,15 @@ fn aggregate_summaries(rows: &[&UsageSummary]) -> UsageSummary {
         summary.cache_creation_tokens = summary
             .cache_creation_tokens
             .saturating_add(row.cache_creation_tokens);
+        summary.cache_creation_5m_tokens = summary
+            .cache_creation_5m_tokens
+            .saturating_add(row.cache_creation_5m_tokens);
+        summary.cache_creation_1h_tokens = summary
+            .cache_creation_1h_tokens
+            .saturating_add(row.cache_creation_1h_tokens);
+        summary.cache_creation_unbucketed_tokens = summary
+            .cache_creation_unbucketed_tokens
+            .saturating_add(row.cache_creation_unbucketed_tokens);
         summary.cache_read_tokens = summary
             .cache_read_tokens
             .saturating_add(row.cache_read_tokens);
@@ -272,6 +298,15 @@ fn aggregate_summaries(rows: &[&UsageSummary]) -> UsageSummary {
             breakdown.cache_creation_tokens = breakdown
                 .cache_creation_tokens
                 .saturating_add(item.cache_creation_tokens);
+            breakdown.cache_creation_5m_tokens = breakdown
+                .cache_creation_5m_tokens
+                .saturating_add(item.cache_creation_5m_tokens);
+            breakdown.cache_creation_1h_tokens = breakdown
+                .cache_creation_1h_tokens
+                .saturating_add(item.cache_creation_1h_tokens);
+            breakdown.cache_creation_unbucketed_tokens = breakdown
+                .cache_creation_unbucketed_tokens
+                .saturating_add(item.cache_creation_unbucketed_tokens);
             breakdown.cache_read_tokens = breakdown
                 .cache_read_tokens
                 .saturating_add(item.cache_read_tokens);
@@ -736,6 +771,9 @@ mod tests {
             input_tokens: fixture.input_tokens,
             output_tokens: 10,
             cache_creation_tokens: 1,
+            cache_creation_5m_tokens: 0,
+            cache_creation_1h_tokens: 0,
+            cache_creation_unbucketed_tokens: 1,
             cache_read_tokens: 2,
             extra_total_tokens: 3,
             total_cost: fixture.cost,
@@ -747,6 +785,9 @@ mod tests {
                 input_tokens: fixture.input_tokens,
                 output_tokens: 10,
                 cache_creation_tokens: 1,
+                cache_creation_5m_tokens: 0,
+                cache_creation_1h_tokens: 0,
+                cache_creation_unbucketed_tokens: 1,
                 cache_read_tokens: 2,
                 extra_total_tokens: 3,
                 cost: fixture.cost,

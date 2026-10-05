@@ -1,12 +1,16 @@
 ---
 source: crates/ccusage-adapter-all/src/tests.rs
+assertion_line: 992
 expression: "report_json(&session.rows, AgentReportKind::Session)"
 ---
 {
   "session": [
     {
       "agent": "zcode",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 45,
+      "cacheCreationUnbucketedTokens": 45,
       "cacheReadTokens": 65,
       "inputTokens": 190,
       "metadata": {
@@ -14,7 +18,10 @@ expression: "report_json(&session.rows, AgentReportKind::Session)"
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 30,
+          "cacheCreationUnbucketedTokens": 30,
           "cacheReadTokens": 40,
           "cost": 0.0003224,
           "inputTokens": 130,
@@ -22,7 +29,10 @@ expression: "report_json(&session.rows, AgentReportKind::Session)"
           "outputTokens": 20
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 25,
           "cost": 0.00015549999999999999,
           "inputTokens": 60,
@@ -41,7 +51,10 @@ expression: "report_json(&session.rows, AgentReportKind::Session)"
     },
     {
       "agent": "zcode",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 10,
       "inputTokens": 40,
       "metadata": {
@@ -49,7 +62,10 @@ expression: "report_json(&session.rows, AgentReportKind::Session)"
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 10,
           "cost": 0.0000806,
           "inputTokens": 40,
@@ -67,7 +83,10 @@ expression: "report_json(&session.rows, AgentReportKind::Session)"
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 75,
     "inputTokens": 230,
     "outputTokens": 35,

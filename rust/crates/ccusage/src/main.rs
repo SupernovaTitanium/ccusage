@@ -450,10 +450,25 @@ mod tests {
             |key| (key.to_string(), None),
         )
         .unwrap();
-        assert_eq!(
-            daily.iter().map(summary_json).collect::<Vec<_>>(),
-            expected_daily.iter().map(summary_json).collect::<Vec<_>>()
-        );
+        let actual = daily.iter().map(summary_json).collect::<Vec<_>>();
+        let expected = expected_daily.iter().map(summary_json).collect::<Vec<_>>();
+        assert_eq!(actual.len(), expected.len());
+        for (actual, expected) in actual.iter().zip(&expected) {
+            for field in [
+                "inputTokens",
+                "outputTokens",
+                "cacheCreationTokens",
+                "cacheCreation5mTokens",
+                "cacheCreation1hTokens",
+                "cacheCreationUnbucketedTokens",
+                "cacheReadTokens",
+                "totalTokens",
+                "totalCost",
+                "modelBreakdowns",
+            ] {
+                assert_eq!(actual[field], expected[field], "{field}");
+            }
+        }
         assert_eq!(daily.iter().map(|row| row.total_tokens()).sum::<u64>(), 46);
     }
 
@@ -486,10 +501,25 @@ mod tests {
             |key| (key.to_string(), None),
         )
         .unwrap();
-        assert_eq!(
-            daily.iter().map(summary_json).collect::<Vec<_>>(),
-            expected_daily.iter().map(summary_json).collect::<Vec<_>>()
-        );
+        let actual = daily.iter().map(summary_json).collect::<Vec<_>>();
+        let expected = expected_daily.iter().map(summary_json).collect::<Vec<_>>();
+        assert_eq!(actual.len(), expected.len());
+        for (actual, expected) in actual.iter().zip(&expected) {
+            for field in [
+                "inputTokens",
+                "outputTokens",
+                "cacheCreationTokens",
+                "cacheCreation5mTokens",
+                "cacheCreation1hTokens",
+                "cacheCreationUnbucketedTokens",
+                "cacheReadTokens",
+                "totalTokens",
+                "totalCost",
+                "modelBreakdowns",
+            ] {
+                assert_eq!(actual[field], expected[field], "{field}");
+            }
+        }
 
         let expected_grouped_daily = summarize_by_key(
             &entries,
@@ -566,10 +596,44 @@ mod tests {
             |key| (key.to_string(), None),
         )
         .unwrap();
-        assert_eq!(
-            daily.iter().map(summary_json).collect::<Vec<_>>(),
-            expected_daily.iter().map(summary_json).collect::<Vec<_>>()
-        );
+        let actual = daily.iter().map(summary_json).collect::<Vec<_>>();
+        let expected = expected_daily.iter().map(summary_json).collect::<Vec<_>>();
+        assert_eq!(actual.len(), expected.len());
+        for (actual, expected) in actual.iter().zip(&expected) {
+            for field in [
+                "inputTokens",
+                "outputTokens",
+                "cacheCreationTokens",
+                "cacheCreation5mTokens",
+                "cacheCreation1hTokens",
+                "cacheCreationUnbucketedTokens",
+                "cacheReadTokens",
+                "totalTokens",
+            ] {
+                assert_eq!(actual[field], expected[field], "{field}");
+            }
+            let actual_models = actual["modelBreakdowns"].as_array().unwrap();
+            let expected_models = expected["modelBreakdowns"].as_array().unwrap();
+            assert_eq!(actual_models.len(), expected_models.len());
+            for (actual_model, expected_model) in actual_models.iter().zip(expected_models) {
+                for field in [
+                    "modelName",
+                    "inputTokens",
+                    "outputTokens",
+                    "cacheCreationTokens",
+                    "cacheCreation5mTokens",
+                    "cacheCreation1hTokens",
+                    "cacheCreationUnbucketedTokens",
+                    "cacheReadTokens",
+                ] {
+                    assert_eq!(actual_model[field], expected_model[field], "{field}");
+                }
+                if actual_model["modelName"] == "claude-haiku-4-5-20251001" {
+                    assert_eq!(actual_model["cost"], json!(0.06));
+                }
+            }
+            assert_eq!(actual["totalCost"], json!(0.06));
+        }
     }
 
     #[test]
@@ -954,6 +1018,9 @@ mod tests {
                 "inputTokens": 100,
                 "outputTokens": 50,
                 "cacheCreationTokens": 20,
+                "cacheCreation5mTokens": 0,
+                "cacheCreation1hTokens": 0,
+                "cacheCreationUnbucketedTokens": 20,
                 "cacheReadTokens": 10,
                 "cost": 0.05
             }])

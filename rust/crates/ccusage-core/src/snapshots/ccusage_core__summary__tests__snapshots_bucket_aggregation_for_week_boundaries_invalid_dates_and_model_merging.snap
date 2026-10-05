@@ -1,18 +1,24 @@
 ---
-source: crates/ccusage/src/summary.rs
+source: crates/ccusage-core/src/summary.rs
 expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
 ---
 {
   "monthly": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 1,
+      "cacheCreationUnbucketedTokens": 1,
       "cacheReadTokens": 2,
       "credits": 0.5,
       "inputTokens": 100,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.125,
           "inputTokens": 100,
@@ -28,14 +34,20 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
       "totalCost": 0.125
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 2,
+      "cacheCreationUnbucketedTokens": 2,
       "cacheReadTokens": 4,
       "credits": 1.0,
       "inputTokens": 500,
       "messageCount": 2,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.5,
           "inputTokens": 300,
@@ -43,7 +55,10 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
           "outputTokens": 10
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.25,
           "inputTokens": 200,
@@ -60,14 +75,20 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
       "totalCost": 0.75
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 1,
+      "cacheCreationUnbucketedTokens": 1,
       "cacheReadTokens": 2,
       "credits": 0.5,
       "inputTokens": 1,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.0,
           "inputTokens": 1,
@@ -85,14 +106,20 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
   ],
   "weekly": [
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 2,
+      "cacheCreationUnbucketedTokens": 2,
       "cacheReadTokens": 4,
       "credits": 1.0,
       "inputTokens": 300,
       "messageCount": 2,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.25,
           "inputTokens": 200,
@@ -100,7 +127,10 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
           "outputTokens": 10
         },
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.125,
           "inputTokens": 100,
@@ -117,14 +147,20 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
       "week": "2025-12-29"
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 1,
+      "cacheCreationUnbucketedTokens": 1,
       "cacheReadTokens": 2,
       "credits": 0.5,
       "inputTokens": 300,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.5,
           "inputTokens": 300,
@@ -140,14 +176,20 @@ expression: "serde_json::json!({ \"weekly\": weekly, \"monthly\": monthly, })"
       "week": "2026-01-05"
     },
     {
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 1,
+      "cacheCreationUnbucketedTokens": 1,
       "cacheReadTokens": 2,
       "credits": 0.5,
       "inputTokens": 1,
       "messageCount": 1,
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 1,
+          "cacheCreationUnbucketedTokens": 1,
           "cacheReadTokens": 2,
           "cost": 0.0,
           "inputTokens": 1,

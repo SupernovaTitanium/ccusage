@@ -1,5 +1,6 @@
 ---
 source: crates/ccusage/tests/copilot_cli.rs
+assertion_line: 51
 expression: "format!(\"Monthly JSON\\n{}\\nSession JSON\\n{}\",\nrun_cli(&fixture, [\"monthly\", \"--json\"]),\nrun_cli(&fixture, [\"session\", \"--json\"]),)"
 ---
 Monthly JSON
@@ -7,7 +8,10 @@ Monthly JSON
   "monthly": [
     {
       "agent": "all",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 30,
+      "cacheCreationUnbucketedTokens": 30,
       "cacheReadTokens": 20,
       "inputTokens": 163,
       "metadata": {
@@ -17,7 +21,10 @@ Monthly JSON
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 30,
+          "cacheCreationUnbucketedTokens": 30,
           "cacheReadTokens": 20,
           "cost": 0.0033625,
           "inputTokens": 163,
@@ -35,7 +42,10 @@ Monthly JSON
     },
     {
       "agent": "all",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 15,
+      "cacheCreationUnbucketedTokens": 15,
       "cacheReadTokens": 10,
       "inputTokens": 72,
       "metadata": {
@@ -45,7 +55,10 @@ Monthly JSON
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 10,
           "cost": 0.0007993750000000001,
           "inputTokens": 72,
@@ -63,7 +76,10 @@ Monthly JSON
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 30,
     "inputTokens": 235,
     "outputTokens": 132,
@@ -77,7 +93,10 @@ Session JSON
   "session": [
     {
       "agent": "copilot",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 30,
+      "cacheCreationUnbucketedTokens": 30,
       "cacheReadTokens": 20,
       "inputTokens": 163,
       "metadata": {
@@ -85,7 +104,10 @@ Session JSON
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 30,
+          "cacheCreationUnbucketedTokens": 30,
           "cacheReadTokens": 20,
           "cost": 0.0033625,
           "inputTokens": 163,
@@ -103,7 +125,10 @@ Session JSON
     },
     {
       "agent": "copilot",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 15,
+      "cacheCreationUnbucketedTokens": 15,
       "cacheReadTokens": 10,
       "inputTokens": 65,
       "metadata": {
@@ -111,7 +136,10 @@ Session JSON
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 15,
+          "cacheCreationUnbucketedTokens": 15,
           "cacheReadTokens": 10,
           "cost": 0.000661875,
           "inputTokens": 65,
@@ -129,7 +157,10 @@ Session JSON
     },
     {
       "agent": "copilot",
+      "cacheCreation1hTokens": 0,
+      "cacheCreation5mTokens": 0,
       "cacheCreationTokens": 0,
+      "cacheCreationUnbucketedTokens": 0,
       "cacheReadTokens": 0,
       "inputTokens": 7,
       "metadata": {
@@ -137,7 +168,10 @@ Session JSON
       },
       "modelBreakdowns": [
         {
+          "cacheCreation1hTokens": 0,
+          "cacheCreation5mTokens": 0,
           "cacheCreationTokens": 0,
+          "cacheCreationUnbucketedTokens": 0,
           "cacheReadTokens": 0,
           "cost": 0.0001375,
           "inputTokens": 7,
@@ -155,7 +189,10 @@ Session JSON
     }
   ],
   "totals": {
+    "cacheCreation1hTokens": 0,
+    "cacheCreation5mTokens": 0,
     "cacheCreationTokens": 45,
+    "cacheCreationUnbucketedTokens": 45,
     "cacheReadTokens": 30,
     "inputTokens": 235,
     "outputTokens": 132,

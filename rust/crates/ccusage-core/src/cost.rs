@@ -116,15 +116,8 @@ fn calculate_cost_from_tokens(
 }
 
 pub fn calculate_cost_from_pricing(usage: crate::TokenUsageRaw, pricing: Pricing) -> f64 {
-    let (cache_create_5m_tokens, cache_create_1h_tokens) =
-        if let Some(breakdown) = usage.cache_creation {
-            (
-                breakdown.ephemeral_5m_input_tokens,
-                breakdown.ephemeral_1h_input_tokens,
-            )
-        } else {
-            (usage.cache_creation_input_tokens, 0)
-        };
+    let (cache_create_5m_tokens, cache_create_1h_tokens, cache_create_unbucketed_tokens) =
+        usage.cache_creation_buckets();
     let cache_create_1h_cost = pricing.input * CACHE_CREATE_1H_INPUT_MULTIPLIER;
     let cache_create_1h_cost_above_200k = pricing
         .input_above_200k
@@ -163,6 +156,8 @@ pub fn calculate_cost_from_pricing(usage: crate::TokenUsageRaw, pricing: Pricing
                 * rate(pricing.cache_create, pricing.cache_create_above_200k)
             + cache_create_1h_tokens as f64
                 * rate(cache_create_1h_cost, cache_create_1h_cost_above_200k)
+            + cache_create_unbucketed_tokens as f64
+                * rate(pricing.cache_create, pricing.cache_create_above_200k)
             + usage.cache_read_input_tokens as f64
                 * rate(pricing.cache_read, pricing.cache_read_above_200k);
     }
@@ -189,6 +184,11 @@ pub fn calculate_cost_from_pricing(usage: crate::TokenUsageRaw, pricing: Pricing
         cache_create_1h_tokens,
         cache_create_1h_cost,
         cache_create_1h_cost_above_200k,
+        threshold,
+    ) + tiered_cost(
+        cache_create_unbucketed_tokens,
+        pricing.cache_create,
+        pricing.cache_create_above_200k,
         threshold,
     ) + tiered_cost(
         usage.cache_read_input_tokens,
@@ -335,6 +335,47 @@ mod tests {
         );
 
         assert!((cost - 55.5).abs() < f64::EPSILON);
+        assert_eq!(usage.cache_creation_buckets(), (10, 20, 0));
+    }
+
+    #[test]
+    fn prices_bucketed_and_legacy_cache_creation_separately() {
+        let usage = TokenUsageRaw {
+            input_tokens: 1,
+            output_tokens: 2,
+            cache_creation_input_tokens: 300,
+            cache_read_input_tokens: 3,
+            cache_creation: Some(CacheCreationRaw::from_ttl_buckets(100, 200)),
+            ..TokenUsageRaw::default()
+        };
+        let legacy = TokenUsageRaw {
+            cache_creation_input_tokens: 50,
+            ..TokenUsageRaw::default()
+        };
+
+        let mut prices = pricing();
+        prices.load_json(r#"{"test-model":{"cache_creation_input_token_cost":1.25}}"#);
+        let cost = calculate_cost_for_usage(
+            Some("test-model"),
+            usage,
+            None,
+            CostMode::Calculate,
+            Some(&prices),
+        );
+        let legacy_cost = calculate_cost_for_usage(
+            Some("test-model"),
+            legacy,
+            None,
+            CostMode::Calculate,
+            Some(&prices),
+        );
+
+        let expected = 1.0 + 20.0 + 0.3 + 100.0 * 1.25 + 200.0 * 2.0;
+        assert!(
+            (cost - expected).abs() < 1e-9,
+            "expected {expected}, got {cost}"
+        );
+        assert!((legacy_cost - 50.0 * 1.25).abs() < 1e-9);
     }
 
     #[test]
