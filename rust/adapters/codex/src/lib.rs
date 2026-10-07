@@ -1,7 +1,8 @@
-use ccusage_adapter_common::{chunk_file_indexes_by_size, collect_usage_files};
+use ccusage_adapter_common::chunk_file_indexes_by_size;
 use ccusage_core::*;
 
 mod aggregate;
+mod input;
 mod loader;
 mod parser;
 mod paths;
@@ -71,6 +72,7 @@ fn resolve_session_id<'a>(
     let requested_id = original_id
         .strip_prefix("codex://threads/")
         .unwrap_or(original_id);
+    let requested_id = requested_id.strip_suffix(".zst").unwrap_or(requested_id);
     let requested_id = requested_id.strip_suffix(".jsonl").unwrap_or(requested_id);
     let matches = groups
         .keys()

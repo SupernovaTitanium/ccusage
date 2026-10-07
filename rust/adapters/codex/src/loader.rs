@@ -25,9 +25,9 @@ pub fn load_codex_events_from_directory(
     single_thread: bool,
 ) -> Result<Vec<CodexTokenUsageEvent>> {
     let files = collect_codex_usage_files(sessions_dir);
-    let replay_plan = CodexReplayPlan::new([(sessions_dir, files.as_slice())], single_thread);
+    let replay_plan = CodexReplayPlan::new([(sessions_dir, files.as_slice())], single_thread)?;
     let mut events =
-        read_codex_events_from_files(sessions_dir, &files, single_thread, &replay_plan);
+        read_codex_events_from_files(sessions_dir, &files, single_thread, &replay_plan)?;
     dedupe_codex_events(&mut events);
     Ok(events)
 }
@@ -69,9 +69,9 @@ fn load_codex_events_from_sources_with_files(
         }
         let files = collect_codex_usage_files(&source.dir);
         let replay_plan =
-            CodexReplayPlan::new([(source.dir.as_path(), files.as_slice())], single_thread);
+            CodexReplayPlan::new([(source.dir.as_path(), files.as_slice())], single_thread)?;
         let mut events =
-            read_codex_events_from_files(&source.dir, &files, single_thread, &replay_plan);
+            read_codex_events_from_files(&source.dir, &files, single_thread, &replay_plan)?;
         dedupe_codex_events(&mut events);
         return Ok((events, false));
     }
@@ -105,11 +105,11 @@ fn load_codex_events_from_sources_with_files(
                 .map(|group| (group.dir.as_path(), group.files.as_slice())),
             single_thread,
         )
-    };
+    }?;
     let mut events = Vec::new();
     for (group, files) in groups.into_iter().zip(files_by_group) {
         let mut source_events =
-            read_codex_events_from_files(&group.dir, &files, single_thread, &replay_plan);
+            read_codex_events_from_files(&group.dir, &files, single_thread, &replay_plan)?;
         events.append(&mut source_events);
     }
     dedupe_codex_events(&mut events);
@@ -135,9 +135,9 @@ fn load_codex_events_from_directory_with_shared(
         )
     } else {
         CodexReplayPlan::new([(sessions_dir, all_files.as_slice())], shared.single_thread)
-    };
+    }?;
     let mut events =
-        read_codex_events_from_files(sessions_dir, &files, shared.single_thread, &replay_plan);
+        read_codex_events_from_files(sessions_dir, &files, shared.single_thread, &replay_plan)?;
     dedupe_codex_events(&mut events);
     let detected = if has_date_bounds(shared) {
         !all_files.is_empty()
@@ -152,12 +152,13 @@ fn read_codex_events_from_files(
     files: &[PathBuf],
     single_thread: bool,
     replay_plan: &CodexReplayPlan,
-) -> Vec<CodexTokenUsageEvent> {
+) -> Result<Vec<CodexTokenUsageEvent>> {
     if single_thread {
         files
             .iter()
-            .flat_map(|file| read_codex_session_file(sessions_dir, file, replay_plan))
-            .collect()
+            .map(|file| read_codex_session_file(sessions_dir, file, replay_plan))
+            .collect::<Result<Vec<_>>>()
+            .map(|chunks| chunks.into_iter().flatten().collect())
     } else {
         read_codex_session_files_parallel(sessions_dir, files, replay_plan)
     }
@@ -171,7 +172,7 @@ fn read_codex_session_files_parallel(
     sessions_dir: &Path,
     files: &[PathBuf],
     replay_plan: &CodexReplayPlan,
-) -> Vec<CodexTokenUsageEvent> {
+) -> Result<Vec<CodexTokenUsageEvent>> {
     let worker_count = thread::available_parallelism()
         .map(usize::from)
         .unwrap_or(1)
@@ -179,8 +180,9 @@ fn read_codex_session_files_parallel(
     if worker_count <= 1 {
         return files
             .iter()
-            .flat_map(|file| read_codex_session_file(sessions_dir, file, replay_plan))
-            .collect();
+            .map(|file| read_codex_session_file(sessions_dir, file, replay_plan))
+            .collect::<Result<Vec<_>>>()
+            .map(|chunks| chunks.into_iter().flatten().collect());
     }
 
     let chunks = chunk_file_indexes_by_size(files, worker_count);
@@ -206,13 +208,13 @@ fn read_codex_session_files_parallel(
             .into_iter()
             .flat_map(|handle| handle.join().expect("codex worker panicked"))
         {
-            loaded_files[index] = Some(events);
+            loaded_files[index] = Some(events?);
         }
-        loaded_files
+        Ok(loaded_files
             .into_iter()
             .flatten()
             .flatten()
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>())
     })
 }
 
@@ -220,9 +222,9 @@ fn read_codex_session_file(
     sessions_dir: &Path,
     path: &Path,
     replay_plan: &CodexReplayPlan,
-) -> Vec<CodexTokenUsageEvent> {
+) -> Result<Vec<CodexTokenUsageEvent>> {
     let mut events = Vec::new();
-    let _ = visit_codex_session_file(
+    visit_codex_session_file(
         sessions_dir,
         path,
         replay_plan.replay_prefix(path),
@@ -230,8 +232,8 @@ fn read_codex_session_file(
             events.push(event);
             Ok(())
         },
-    );
-    events
+    )?;
+    Ok(events)
 }
 
 fn dedupe_codex_events(events: &mut Vec<CodexTokenUsageEvent>) {

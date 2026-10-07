@@ -1,10 +1,4 @@
-use std::{
-    borrow::Cow,
-    fs,
-    io::{BufRead, BufReader},
-    path::Path,
-    sync::LazyLock,
-};
+use std::{borrow::Cow, fs, path::Path, sync::LazyLock};
 
 use memchr::memmem::Finder;
 use serde::Deserialize;
@@ -98,21 +92,16 @@ const CODEX_REWRITTEN_BURST_PAUSE_MS: i64 = 1_000;
 /// A session that opens with two usage events written back to back replayed a
 /// history it did not spend; one that pauses between them was recording its own
 /// turns from the start.
-fn detect_rewritten_burst(path: &Path) -> Option<TimestampMs> {
-    let Ok(file) = fs::File::open(path) else {
-        return None;
-    };
-    let mut reader = BufReader::new(file);
+fn detect_rewritten_burst(path: &Path) -> Result<Option<TimestampMs>> {
+    let mut reader = super::input::open(path)?;
     let mut line = Vec::new();
     let mut first: Option<TimestampMs> = None;
 
     loop {
         line.clear();
-        let Ok(bytes_read) = reader.read_until(b'\n', &mut line) else {
-            return None;
-        };
+        let bytes_read = super::input::read_until(&mut *reader, path, &mut line)?;
         if bytes_read == 0 {
-            return None;
+            return Ok(None);
         }
         let Some(CodexLineKind::Session) = codex_line_usage_kind(&line) else {
             continue;
@@ -140,9 +129,9 @@ fn detect_rewritten_burst(path: &Path) -> Option<TimestampMs> {
         match first {
             None => first = Some(timestamp),
             Some(first) => {
-                return (0..=CODEX_REWRITTEN_BURST_PAUSE_MS)
+                return Ok((0..=CODEX_REWRITTEN_BURST_PAUSE_MS)
                     .contains(&(timestamp.as_millis() - first.as_millis()))
-                    .then_some(first);
+                    .then_some(first));
             }
         }
     }
@@ -159,10 +148,7 @@ pub(super) fn visit_codex_session_file(
     replayed_prefix: Option<&[CodexRawUsage]>,
     mut visit: impl FnMut(CodexTokenUsageEvent) -> Result<()>,
 ) -> Result<()> {
-    let Ok(file) = fs::File::open(path) else {
-        return Ok(());
-    };
-    let mut reader = BufReader::with_capacity(128 * 1024, file);
+    let mut reader = super::input::open(path)?;
     let mut line = Vec::new();
     let session_id = codex_session_id(sessions_dir, path);
     let mut previous_totals: Option<CodexRawUsage> = None;
@@ -198,13 +184,15 @@ pub(super) fn visit_codex_session_file(
                     // Nothing matched, so the parent stream cannot anchor this
                     // replay: the log is unavailable, or Codex rewrote the copied
                     // history. Fall back to the rewritten burst instead.
-                    replay = (index == 0)
-                        .then(|| detect_rewritten_burst(path))
-                        .flatten()
-                        .map_or(
-                            CodexReplayState::Done,
-                            CodexReplayState::SkippingRewrittenBurst,
-                        );
+                    replay = if index == 0 {
+                        detect_rewritten_burst(path)?
+                    } else {
+                        None
+                    }
+                    .map_or(
+                        CodexReplayState::Done,
+                        CodexReplayState::SkippingRewrittenBurst,
+                    );
                 }
                 CodexReplayState::SkippingRewrittenBurst(previous) => {
                     if let Some(timestamp) = parse_ts_timestamp(&event.timestamp)
@@ -223,9 +211,7 @@ pub(super) fn visit_codex_session_file(
 
     loop {
         line.clear();
-        let Ok(bytes_read) = reader.read_until(b'\n', &mut line) else {
-            return Ok(());
-        };
+        let bytes_read = super::input::read_until(&mut *reader, path, &mut line)?;
         if bytes_read == 0 {
             break;
         }
@@ -676,7 +662,8 @@ fn codex_is_leap_year(year: u16) -> bool {
 }
 
 fn codex_session_id(sessions_dir: &Path, path: &Path) -> String {
-    let relative = path.strip_prefix(sessions_dir).unwrap_or(path);
+    let logical = super::input::logical_path(path);
+    let relative = logical.strip_prefix(sessions_dir).unwrap_or(&logical);
     let mut session_id = relative
         .with_extension("")
         .components()

@@ -97,7 +97,7 @@ fn load_groups_from_sources(
                 .map(|group| (group.dir.as_path(), group.files.as_slice())),
             shared.single_thread,
         )
-    };
+    }?;
     let mut groups = BTreeMap::new();
     let seen = create_dedupe_shards();
     for (group, files) in file_groups.iter().zip(&files_by_group) {
@@ -137,7 +137,7 @@ pub(super) fn load_groups_from_directory(
         )
     } else {
         CodexReplayPlan::new([(sessions_dir, all_files.as_slice())], shared.single_thread)
-    };
+    }?;
     let run = CodexAggregateRun {
         sessions_dir,
         files: &files,

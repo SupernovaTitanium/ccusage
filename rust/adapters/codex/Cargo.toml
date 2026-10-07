@@ -13,6 +13,7 @@ memchr.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+zstd = { version = "0.13.3", default-features = false }
 
 [dev-dependencies]
 ccusage-test-support.workspace = true

@@ -84,8 +84,25 @@ pub(super) struct CodexUsageFileGroup {
 
 pub(super) fn collect_codex_usage_files(dir: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    crate::collect_usage_files(dir, &mut files);
+    fn collect(dir: &Path, files: &mut Vec<PathBuf>) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect(&path, files);
+            } else if path.to_string_lossy().ends_with(".jsonl")
+                || path.to_string_lossy().ends_with(".jsonl.zst")
+            {
+                files.push(path);
+            }
+        }
+    }
+    collect(dir, &mut files);
     files.sort();
+    let mut seen = FxHashSet::default();
+    files.retain(|path| seen.insert(super::input::logical_path(path)));
     files
 }
 
@@ -220,7 +237,10 @@ fn parse_date_part(value: &str, length: usize) -> Option<u16> {
 
 fn codex_usage_file_key(source: &CodexUsageSource, file: &Path) -> (PathBuf, PathBuf) {
     let relative = file.strip_prefix(&source.dir).unwrap_or(file).to_path_buf();
-    (source.dedupe_scope.clone(), relative)
+    (
+        source.dedupe_scope.clone(),
+        super::input::logical_path(&relative),
+    )
 }
 
 pub(super) fn codex_home_paths() -> Result<Vec<PathBuf>> {
