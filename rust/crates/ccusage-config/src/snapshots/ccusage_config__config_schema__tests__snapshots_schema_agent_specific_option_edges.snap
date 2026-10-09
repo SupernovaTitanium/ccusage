@@ -104,6 +104,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
               "format": "double",
               "type": "number"
             },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
+            },
             "maxInputTokens": {
               "format": "uint64",
               "minimum": 0.0,
@@ -267,6 +274,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
             "inputCostPerTokenAbove200kTokens": {
               "format": "double",
               "type": "number"
+            },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
             },
             "maxInputTokens": {
               "format": "uint64",
@@ -453,6 +467,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
               "format": "double",
               "type": "number"
             },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
+            },
             "maxInputTokens": {
               "format": "uint64",
               "minimum": 0.0,
@@ -626,6 +647,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
               "format": "double",
               "type": "number"
             },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
+            },
             "maxInputTokens": {
               "format": "uint64",
               "minimum": 0.0,
@@ -790,6 +818,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
             "inputCostPerTokenAbove200kTokens": {
               "format": "double",
               "type": "number"
+            },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
             },
             "maxInputTokens": {
               "format": "uint64",
@@ -963,6 +998,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
               "format": "double",
               "type": "number"
             },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
+            },
             "maxInputTokens": {
               "format": "uint64",
               "minimum": 0.0,
@@ -1128,6 +1170,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
               "format": "double",
               "type": "number"
             },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
+            },
             "maxInputTokens": {
               "format": "uint64",
               "minimum": 0.0,
@@ -1292,6 +1341,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
             "inputCostPerTokenAbove200kTokens": {
               "format": "double",
               "type": "number"
+            },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
             },
             "maxInputTokens": {
               "format": "uint64",
@@ -1498,6 +1554,13 @@ expression: "json!({\n    \"rootRef\": schema[\"$ref\"], \"rootProperties\":\n  
             "inputCostPerTokenAbove200kTokens": {
               "format": "double",
               "type": "number"
+            },
+            "longContextThresholdTokens": {
+              "description": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "format": "uint64",
+              "markdownDescription": "Context size above which the whole request is billed at the `*_above_200k_tokens` rates.",
+              "minimum": 0.0,
+              "type": "integer"
             },
             "maxInputTokens": {
               "format": "uint64",

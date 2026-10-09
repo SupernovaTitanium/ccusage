@@ -391,6 +391,9 @@ fn apply_explicit_pricing_override(pricing: &mut Pricing, override_value: &Prici
     if let Some(value) = override_value.cache_read_input_token_cost_above_200k_tokens {
         pricing.cache_read_above_200k = Some(value);
     }
+    if let Some(value) = override_value.long_context_threshold_tokens.filter(|v| *v > 0) {
+        pricing.long_context_threshold = Some(value);
+    }
     if let Some(value) = override_value.fast_multiplier {
         pricing.fast_multiplier = value;
     }
@@ -1850,7 +1853,10 @@ impl PricingMap {
                 .or(base.output_above_200k),
             cache_create_above_200k,
             cache_read_above_200k,
-            long_context_threshold: base.long_context_threshold,
+            long_context_threshold: override_value
+                .long_context_threshold_tokens
+                .filter(|threshold| *threshold > 0)
+                .or(base.long_context_threshold),
             fast_multiplier: override_value
                 .fast_multiplier
                 .unwrap_or(base.fast_multiplier),

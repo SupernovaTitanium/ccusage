@@ -600,6 +600,8 @@ pub struct ConfigPricingOverride {
     pub output_cost_per_token_above_200k_tokens: Option<f64>,
     pub cache_creation_input_token_cost_above_200k_tokens: Option<f64>,
     pub cache_read_input_token_cost_above_200k_tokens: Option<f64>,
+    /// Context size above which the whole request is billed at the `*_above_200k_tokens` rates.
+    pub long_context_threshold_tokens: Option<u64>,
     pub max_input_tokens: Option<u64>,
     pub fast_multiplier: Option<f64>,
 }

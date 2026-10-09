@@ -702,4 +702,64 @@ mod tests {
             0.14
         );
     }
+
+    #[test]
+    fn override_threshold_bills_whole_request_at_long_context_rates() {
+        // Haiku 5.5 has two published price levels split at 100K prompt tokens,
+        // counting cache reads; the override alone must express both.
+        let model = "override-two-level".to_string();
+        let override_value = crate::cli::PricingOverride {
+            input_cost_per_token: Some(0.10e-6),
+            output_cost_per_token: Some(0.50e-6),
+            cache_read_input_token_cost: Some(0.01e-6),
+            cache_creation_input_token_cost: Some(0.125e-6),
+            input_cost_per_token_above_200k_tokens: Some(0.50e-6),
+            output_cost_per_token_above_200k_tokens: Some(2.50e-6),
+            cache_read_input_token_cost_above_200k_tokens: Some(0.05e-6),
+            cache_creation_input_token_cost_above_200k_tokens: Some(0.625e-6),
+            long_context_threshold_tokens: Some(100_000),
+            ..crate::cli::PricingOverride::default()
+        };
+        let pricing = PricingMap::load_with_overrides(true, false, [(&model, &override_value)]);
+        let cost = |input, cache_read, output| {
+            calculate_cost_for_usage(
+                Some(&model),
+                TokenUsageRaw {
+                    input_tokens: input,
+                    cache_read_input_tokens: cache_read,
+                    output_tokens: output,
+                    ..TokenUsageRaw::default()
+                },
+                None,
+                CostMode::Calculate,
+                Some(&pricing),
+            )
+        };
+
+        let short = cost(10_000, 90_000, 1_000);
+        assert!((short - (10_000.0 * 0.10e-6 + 90_000.0 * 0.01e-6 + 1_000.0 * 0.50e-6)).abs() < 1e-12, "{short}");
+        let long = cost(10_001, 90_000, 1_000);
+        assert!((long - (10_001.0 * 0.50e-6 + 90_000.0 * 0.05e-6 + 1_000.0 * 2.50e-6)).abs() < 1e-12, "{long}");
+    }
+
+    #[test]
+    fn override_without_threshold_keeps_marginal_200k_behavior() {
+        let model = "override-no-threshold".to_string();
+        let override_value = crate::cli::PricingOverride {
+            input_cost_per_token: Some(1e-6),
+            output_cost_per_token: Some(1e-6),
+            cache_read_input_token_cost: Some(0.0),
+            input_cost_per_token_above_200k_tokens: Some(2e-6),
+            ..crate::cli::PricingOverride::default()
+        };
+        let pricing = PricingMap::load_with_overrides(true, false, [(&model, &override_value)]);
+        let cost = calculate_cost_for_usage(
+            Some(&model),
+            TokenUsageRaw { input_tokens: 200_010, ..TokenUsageRaw::default() },
+            None,
+            CostMode::Calculate,
+            Some(&pricing),
+        );
+        assert!((cost - (200_000.0 * 1e-6 + 10.0 * 2e-6)).abs() < 1e-12, "{cost}");
+    }
 }

@@ -669,6 +669,9 @@ fn merge_override_fields(target: &mut PricingOverride, source: ConfigPricingOver
         target.cache_read_input_token_cost_above_200k_tokens =
             source.cache_read_input_token_cost_above_200k_tokens;
     }
+    if source.long_context_threshold_tokens.is_some() {
+        target.long_context_threshold_tokens = source.long_context_threshold_tokens;
+    }
     if source.max_input_tokens.is_some() {
         target.max_input_tokens = source.max_input_tokens;
     }
@@ -690,6 +693,7 @@ impl From<ConfigPricingOverride> for PricingOverride {
                 .cache_creation_input_token_cost_above_200k_tokens,
             cache_read_input_token_cost_above_200k_tokens: value
                 .cache_read_input_token_cost_above_200k_tokens,
+            long_context_threshold_tokens: value.long_context_threshold_tokens,
             max_input_tokens: value.max_input_tokens,
             fast_multiplier: value.fast_multiplier,
         }
@@ -1038,6 +1042,17 @@ mod tests {
 
         assert!(shared.offline);
         assert!(shared.json);
+    }
+
+    #[test]
+    fn pricing_override_parses_long_context_threshold() {
+        let value: crate::config_schema::ConfigPricingOverride = serde_json::from_str(
+            r#"{"inputCostPerToken": 1e-7, "longContextThresholdTokens": 100000}"#,
+        )
+        .unwrap();
+        let converted = ccusage_cli::PricingOverride::from(value);
+        assert_eq!(converted.long_context_threshold_tokens, Some(100_000));
+        assert_eq!(converted.input_cost_per_token, Some(1e-7));
     }
 
     #[test]
