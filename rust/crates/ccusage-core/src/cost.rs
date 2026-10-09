@@ -737,9 +737,15 @@ mod tests {
         };
 
         let short = cost(10_000, 90_000, 1_000);
-        assert!((short - (10_000.0 * 0.10e-6 + 90_000.0 * 0.01e-6 + 1_000.0 * 0.50e-6)).abs() < 1e-12, "{short}");
+        assert!(
+            (short - (10_000.0 * 0.10e-6 + 90_000.0 * 0.01e-6 + 1_000.0 * 0.50e-6)).abs() < 1e-12,
+            "{short}"
+        );
         let long = cost(10_001, 90_000, 1_000);
-        assert!((long - (10_001.0 * 0.50e-6 + 90_000.0 * 0.05e-6 + 1_000.0 * 2.50e-6)).abs() < 1e-12, "{long}");
+        assert!(
+            (long - (10_001.0 * 0.50e-6 + 90_000.0 * 0.05e-6 + 1_000.0 * 2.50e-6)).abs() < 1e-12,
+            "{long}"
+        );
     }
 
     #[test]
@@ -755,11 +761,17 @@ mod tests {
         let pricing = PricingMap::load_with_overrides(true, false, [(&model, &override_value)]);
         let cost = calculate_cost_for_usage(
             Some(&model),
-            TokenUsageRaw { input_tokens: 200_010, ..TokenUsageRaw::default() },
+            TokenUsageRaw {
+                input_tokens: 200_010,
+                ..TokenUsageRaw::default()
+            },
             None,
             CostMode::Calculate,
             Some(&pricing),
         );
-        assert!((cost - (200_000.0 * 1e-6 + 10.0 * 2e-6)).abs() < 1e-12, "{cost}");
+        assert!(
+            (cost - (200_000.0 * 1e-6 + 10.0 * 2e-6)).abs() < 1e-12,
+            "{cost}"
+        );
     }
 }

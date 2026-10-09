@@ -391,7 +391,10 @@ fn apply_explicit_pricing_override(pricing: &mut Pricing, override_value: &Prici
     if let Some(value) = override_value.cache_read_input_token_cost_above_200k_tokens {
         pricing.cache_read_above_200k = Some(value);
     }
-    if let Some(value) = override_value.long_context_threshold_tokens.filter(|v| *v > 0) {
+    if let Some(value) = override_value
+        .long_context_threshold_tokens
+        .filter(|v| *v > 0)
+    {
         pricing.long_context_threshold = Some(value);
     }
     if let Some(value) = override_value.fast_multiplier {
@@ -1558,6 +1561,7 @@ impl PricingMap {
             self.entries
                 .iter()
                 .filter(|(candidate, _)| !self.exact_only.contains(candidate.as_str()))
+                .filter(|(candidate, _)| !is_foreign_billing_tier_key(candidate, model))
                 .filter(|(candidate, _)| {
                     pricing_key_matches(candidate, model, normalized_model.as_ref())
                 })
@@ -2559,6 +2563,17 @@ fn pricing_key_matches(candidate: &str, model: &str, normalized_model: &str) -> 
         || contains_pricing_key(normalized_candidate.as_ref(), normalized_model)
 }
 
+/// Gateway keys such as `openrouter/anthropic/claude-opus-5:batch` price a
+/// discounted (or free) billing tier, not the model. A request that does not
+/// name that tier must never fuzzy-match them: being the longest matching key,
+/// they would otherwise win and bill the model at half price.
+fn is_foreign_billing_tier_key(candidate: &str, model: &str) -> bool {
+    const TIERS: [&str; 3] = [":batch", ":flex", ":free"];
+    TIERS
+        .iter()
+        .any(|tier| candidate.ends_with(tier) && !model.ends_with(tier))
+}
+
 /// Finds a key only when the surrounding bytes are non-alphanumeric boundaries.
 fn contains_pricing_key(value: &str, key: &str) -> bool {
     value.match_indices(key).any(|(index, _)| {
@@ -2638,13 +2653,23 @@ struct LongContextRates {
 /// boundary used for LiteLLM `*_above_200k_tokens` data.
 pub fn long_context_split_threshold(model: &str) -> u64 {
     let tiers = embedded_models_dev_pricing();
-    let base = model_without_date_suffix(model);
-    let resolved = pricing_alias(base).unwrap_or(base);
-    tiers
-        .entries
-        .get(resolved)
-        .or_else(|| tiers.entries.get(base))
-        .and_then(|pricing| pricing.long_context_threshold)
+    let threshold_of = |name: &str| {
+        let base = model_without_date_suffix(name);
+        let resolved = pricing_alias(base).unwrap_or(base);
+        tiers
+            .entries
+            .get(resolved)
+            .or_else(|| tiers.entries.get(base))
+            .and_then(|pricing| pricing.long_context_threshold)
+    };
+    // A provider-qualified name (`main/gpt-6-astra`) is priced as its base
+    // model, so it has to split at that model's boundary too.
+    threshold_of(model)
+        .or_else(|| {
+            model
+                .rsplit_once('/')
+                .and_then(|(_, base)| threshold_of(base))
+        })
         .unwrap_or(DEFAULT_LONG_CONTEXT_THRESHOLD_TOKENS)
 }
 
@@ -5109,6 +5134,10 @@ mod tests {
         assert_eq!(long_context_split_threshold("gpt-5.5-pro"), 272_000);
         // Date-pinned keys share their base model's boundary.
         assert_eq!(long_context_split_threshold("gpt-5.5-2026-04-23"), 272_000);
+        // Provider-qualified names split at their base model's boundary.
+        assert_eq!(long_context_split_threshold("main/gpt-6-astra"), 272_000);
+        assert_eq!(long_context_split_threshold("main/gpt-5.6-sol"), 272_000);
+        assert_eq!(long_context_split_threshold("main/gpt-5"), 200_000);
         // Models without a built-in tier fall back to the 200K default used for
         // LiteLLM `*_above_200k_tokens` data.
         assert_eq!(long_context_split_threshold("gpt-5"), 200_000);
@@ -5273,6 +5302,9 @@ mod tests {
         assert_eq!(pricing.find("gpt-5.4").unwrap().fast_multiplier, 2.0);
         assert_eq!(pricing.find("gpt-5.3-codex").unwrap().fast_multiplier, 2.0);
         assert_eq!(pricing.find("gpt-6-astra").unwrap().fast_multiplier, 2.0);
+        assert_eq!(pricing.find("gpt-6-sol").unwrap().fast_multiplier, 2.0);
+        assert_eq!(pricing.find("gpt-6.1-sol").unwrap().fast_multiplier, 2.0);
+        assert_eq!(pricing.find("gpt-6-luna").unwrap().fast_multiplier, 2.0);
     }
 
     #[test]
@@ -5586,6 +5618,39 @@ mod tests {
         assert!(!json.contains("\"source\""));
         assert!(!json.contains("vertex_ai/"));
         assert!(json.contains("claude-opus-4-6"));
+    }
+
+    #[test]
+    fn fuzzy_match_skips_gateway_billing_tier_keys() {
+        let entry = |input| Pricing {
+            input,
+            ..Pricing::empty()
+        };
+        let mut pricing = PricingMap::default();
+        pricing
+            .entries
+            .insert("openrouter/anthropic/claude-opus-5".to_string(), entry(5.0));
+        pricing.entries.insert(
+            "openrouter/anthropic/claude-opus-5:batch".to_string(),
+            entry(2.5),
+        );
+
+        assert_eq!(pricing.find("anthropic/claude-opus-5").unwrap().input, 5.0);
+        assert_eq!(
+            pricing
+                .find("openrouter/anthropic/claude-opus-5:batch")
+                .unwrap()
+                .input,
+            2.5
+        );
+    }
+
+    #[test]
+    fn embedded_pricing_bills_qualified_opus_5_at_standard_rate() {
+        let pricing = PricingMap::load_embedded();
+        let opus = pricing.find("anthropic/claude-opus-5").unwrap();
+        assert!((opus.input - 5e-6).abs() < 1e-15, "{}", opus.input);
+        assert!((opus.output - 25e-6).abs() < 1e-15, "{}", opus.output);
     }
 
     #[test]
