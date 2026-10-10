@@ -910,7 +910,7 @@ mod tests {
                 "payload": {"id": "historical"},
             })
             .to_string(),
-            usage_line("2026-03-15T08:01:00.000Z", 999),
+            usage_line("2025-01-01T08:01:00.000Z", 999),
         ]
         .join("\n");
         let long_running = [
@@ -985,7 +985,8 @@ mod tests {
                 AgentReportKind::Daily,
             )
             .unwrap();
-            assert_eq!(unbounded["2026-03-15"].input_tokens, 1_099);
+            assert_eq!(unbounded["2026-03-15"].input_tokens, 100);
+            assert_eq!(unbounded["2025-01-01"].input_tokens, 999);
         }
     }
 

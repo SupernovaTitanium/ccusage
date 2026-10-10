@@ -1100,7 +1100,7 @@ fn unified_report_omits_zcode_without_usage_database() {
 #[test]
 fn unified_report_filters_codex_paths_before_loading_historical_rows() {
     let resumed_usage = codex_usage_line("2026-03-15T08:01:00.000Z", "gpt-5", 1_000);
-    let historical_usage = codex_usage_line("2026-03-15T08:02:00.000Z", "gpt-5", 9_999);
+    let historical_usage = codex_usage_line("2025-01-02T08:01:00.000Z", "gpt-5", 9_999);
     let fixture = fs_fixture!({
         "codex/sessions/2025/01/01/resumed.jsonl": &resumed_usage,
         "codex/sessions/2025/01/02/historical.jsonl": &historical_usage,

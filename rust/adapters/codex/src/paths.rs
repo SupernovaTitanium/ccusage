@@ -1,5 +1,6 @@
 use std::{
     env, fs,
+    io::{Read, Seek, SeekFrom},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
@@ -134,12 +135,7 @@ pub(super) fn filter_codex_usage_files(
     };
     files
         .iter()
-        .filter(|file| {
-            eligibility.contains(
-                codex_file_date(sessions_dir, file),
-                file_modified_millis(file),
-            )
-        })
+        .filter(|file| eligibility.contains(codex_file_date(sessions_dir, file), file))
         .cloned()
         .collect()
 }
@@ -172,35 +168,89 @@ impl CodexFileEligibility {
         })
     }
 
-    fn contains(self, start_date: Option<Date>, modified_millis: Option<i64>) -> bool {
+    fn contains(self, start_date: Option<Date>, file: &Path) -> bool {
         self.until_path_date
             .is_none_or(|until| start_date.is_none_or(|date| date <= until))
             && self.since_date.is_none_or(|since| {
                 start_date.is_none_or(|date| date >= since)
-                    || modified_millis.is_none_or(|modified| {
-                        self.since_millis
-                            .is_none_or(|since_millis| modified >= since_millis)
+                    || self.since_millis.is_none_or(|since_millis| {
+                        newest_entry_bound_millis(file).is_none_or(|newest| newest >= since_millis)
                     })
             })
     }
+}
+
+/// Upper bound on the newest entry time in a usage file, or `None` when it cannot be bounded.
+///
+/// Codex appends to a resumed rollout without updating its mtime on some platforms, so the mtime
+/// alone is not a bound. A plain rollout is append-only in time order, so its last line holds the
+/// newest entry. A compressed rollout is written once after its last entry, so its creation time
+/// bounds every entry.
+fn newest_entry_bound_millis(path: &Path) -> Option<i64> {
+    let metadata = fs::metadata(path).ok()?;
+    let modified = system_time_millis(metadata.modified().ok()?)?;
+    let content = if metadata.len() == 0 {
+        modified
+    } else if path.to_string_lossy().ends_with(".jsonl.zst") {
+        system_time_millis(metadata.created().ok()?)?
+    } else {
+        last_line_timestamp_millis(path)?
+    };
+    Some(modified.max(content))
+}
+
+const TAIL_CHUNK: u64 = 64 * 1024;
+
+fn last_line_timestamp_millis(path: &Path) -> Option<i64> {
+    let mut file = fs::File::open(path).ok()?;
+    let mut start = file.metadata().ok()?.len();
+    let mut tail = Vec::new();
+    loop {
+        let end = tail
+            .iter()
+            .rposition(|byte: &u8| !byte.is_ascii_whitespace())
+            .map(|index| index + 1);
+        if let Some(end) = end {
+            if let Some(newline) = memchr::memrchr(b'\n', &tail[..end]) {
+                return line_timestamp_millis(&tail[newline + 1..end]);
+            }
+            if start == 0 {
+                return line_timestamp_millis(&tail[..end]);
+            }
+        } else if start == 0 {
+            return None;
+        }
+        let step = TAIL_CHUNK.max(tail.len() as u64).min(start);
+        start -= step;
+        let mut chunk = vec![0; usize::try_from(step).ok()?];
+        file.seek(SeekFrom::Start(start)).ok()?;
+        file.read_exact(&mut chunk).ok()?;
+        chunk.extend_from_slice(&tail);
+        tail = chunk;
+    }
+}
+
+fn line_timestamp_millis(line: &[u8]) -> Option<i64> {
+    #[derive(serde::Deserialize)]
+    struct Stamped {
+        timestamp: Option<String>,
+    }
+    let stamped = serde_json::from_slice::<Stamped>(line).ok()?;
+    Some(crate::parse_ts_timestamp(&stamped.timestamp?)?.as_millis())
+}
+
+fn system_time_millis(time: std::time::SystemTime) -> Option<i64> {
+    time.duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_millis()
+        .try_into()
+        .ok()
 }
 
 fn utc_path_date(millis: i64) -> Option<Date> {
     let timestamp = jiff::Timestamp::from_millisecond(millis).ok()?;
     let zoned = timestamp.to_zoned(JiffTimeZone::get("UTC").ok()?);
     Date::new(zoned.year(), zoned.month(), zoned.day()).ok()
-}
-
-fn file_modified_millis(path: &Path) -> Option<i64> {
-    fs::metadata(path)
-        .ok()?
-        .modified()
-        .ok()?
-        .duration_since(UNIX_EPOCH)
-        .ok()?
-        .as_millis()
-        .try_into()
-        .ok()
 }
 
 fn codex_file_date(sessions_dir: &Path, file: &Path) -> Option<Date> {
@@ -431,6 +481,84 @@ mod tests {
         );
 
         assert_eq!(filtered, vec![resumed, current]);
+    }
+
+    #[test]
+    fn keeps_a_rollout_appended_after_since_without_an_mtime_update() {
+        let fixture = Fixture::new();
+        let sessions_dir = fixture.create_dir_all("codex/sessions");
+        let line =
+            |timestamp: &str| format!("{{\"timestamp\":\"{timestamp}\",\"type\":\"event_msg\"}}\n");
+        let appended = fixture.write_file(
+            "codex/sessions/2026/03/01/appended.jsonl",
+            &(line("2026-03-01T00:00:00.000Z") + &line("2026-03-15T12:00:00.000Z") + "\n"),
+        );
+        let finished = fixture.write_file(
+            "codex/sessions/2026/03/01/finished.jsonl",
+            &(line("2026-03-01T00:00:00.000Z") + &line("2026-03-01T01:00:00.000Z")),
+        );
+        for file in [&appended, &finished] {
+            set_file_modified(
+                file,
+                crate::parse_ts_timestamp("2026-03-01T00:00:00.000Z").unwrap(),
+            );
+        }
+        let shared = SharedArgs {
+            since: Some("20260315".to_string()),
+            timezone: Some("UTC".to_string()),
+            ..SharedArgs::default()
+        };
+
+        assert_eq!(
+            filter_codex_usage_files(&sessions_dir, &[appended.clone(), finished], &shared),
+            vec![appended]
+        );
+    }
+
+    #[test]
+    fn reads_the_last_line_of_a_rollout_larger_than_one_tail_chunk() {
+        let fixture = Fixture::new();
+        let long = format!(
+            "{{\"timestamp\":\"2026-03-01T00:00:00.000Z\",\"pad\":\"{}\"}}\n",
+            "x".repeat(usize::try_from(TAIL_CHUNK).unwrap() * 2)
+        );
+        let file = fixture.write_file(
+            "codex/sessions/2026/03/01/long.jsonl",
+            format!("{long}{long}"),
+        );
+
+        assert_eq!(
+            last_line_timestamp_millis(&file),
+            Some(
+                crate::parse_ts_timestamp("2026-03-01T00:00:00.000Z")
+                    .unwrap()
+                    .as_millis()
+            )
+        );
+    }
+
+    #[test]
+    fn keeps_a_rollout_whose_last_line_has_no_timestamp() {
+        let fixture = Fixture::new();
+        let sessions_dir = fixture.create_dir_all("codex/sessions");
+        let file = fixture.write_file(
+            "codex/sessions/2026/03/01/legacy.jsonl",
+            "{\"timestamp\":\"2026-03-01T00:00:00.000Z\"}\n{\"record_type\":\"state\"}\n",
+        );
+        set_file_modified(
+            &file,
+            crate::parse_ts_timestamp("2026-03-01T00:00:00.000Z").unwrap(),
+        );
+        let shared = SharedArgs {
+            since: Some("20260315".to_string()),
+            timezone: Some("UTC".to_string()),
+            ..SharedArgs::default()
+        };
+
+        assert_eq!(
+            filter_codex_usage_files(&sessions_dir, std::slice::from_ref(&file), &shared),
+            vec![file]
+        );
     }
 
     #[test]
