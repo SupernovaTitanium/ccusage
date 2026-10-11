@@ -6,7 +6,7 @@ use crate::{
     LoadedEntry, PricingMap, TimestampMs, TokenUsageRaw, UsageEntry, UsageMessage,
     apply_total_token_fallback, calculate_cost_for_usage_at,
     cli::{CostMode, PricingOverride},
-    format_date_tz, format_rfc3339_millis, total_usage_tokens,
+    format_date_tz, format_rfc3339_millis, is_free_tier, total_usage_tokens,
 };
 
 pub(super) struct ZcodeUsageRow {
@@ -173,6 +173,14 @@ fn pricing_model(
         .find(|candidate| pricing_overrides.contains_key(*candidate))
     {
         return Some(candidate.clone());
+    }
+    // Spelling drift (`GLM-5.3` vs `glm-5.3`, `@cf/...`, `openai-gpt-6-sol`)
+    // still names the same model; only reached after every exact spelling missed.
+    if is_free_tier(raw_model) {
+        return Some(raw_model.trim().to_string());
+    }
+    if let Some(key) = pricing.loose_override_key(raw_model) {
+        return Some(key);
     }
     if provider_id.is_some_and(|provider| !is_zai_provider(Some(provider))) {
         return None;
@@ -405,6 +413,45 @@ mod tests {
         let entry = custom_entry("free/claude-opus-5-5", &overrides);
         assert_eq!(entry.cost, 0.0);
         assert!(entry.missing_pricing_model.is_none());
+    }
+
+    #[test]
+    fn treats_case_dot_and_at_as_spelling_drift() {
+        let overrides = BTreeMap::from([("GLM-5.3".to_string(), rate(1e-6))]);
+        for model in ["zai/glm-5.3", "cloudflare/@cf/glm-5-3", "glm@5.3"] {
+            let entry = custom_entry(model, &overrides);
+            assert_eq!(entry.cost, 60.0 * 1e-6, "{model}");
+            assert!(entry.missing_pricing_model.is_none(), "{model}");
+        }
+    }
+
+    #[test]
+    fn strips_vendor_tokens_gateways_glue_onto_the_model() {
+        let overrides = BTreeMap::from([("gpt-6.1-sol".to_string(), rate(1e-6))]);
+        let entry = custom_entry("openrouter/openai-gpt-6.1-sol", &overrides);
+        assert_eq!(entry.cost, 60.0 * 1e-6);
+        assert!(entry.missing_pricing_model.is_none());
+    }
+
+    #[test]
+    fn free_tiers_book_zero_without_an_override() {
+        for model in [
+            "opencode-free/laguna-s-2.1-free",
+            "openrouter/gemma-4-31b-it:free",
+        ] {
+            let entry = custom_entry(model, &BTreeMap::new());
+            assert_eq!(entry.cost, 0.0, "{model}");
+            assert!(entry.missing_pricing_model.is_none(), "{model}");
+        }
+    }
+
+    #[test]
+    fn exact_override_beats_loose_override() {
+        let overrides = BTreeMap::from([
+            ("glm-5-3".to_string(), rate(1e-6)),
+            ("glm-5.3".to_string(), rate(2e-6)),
+        ]);
+        assert_eq!(custom_entry("glm-5.3", &overrides).cost, 60.0 * 2e-6);
     }
 
     #[test]

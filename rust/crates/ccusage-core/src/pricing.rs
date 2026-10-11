@@ -1379,6 +1379,21 @@ impl PricingMap {
         {
             return Some(pricing);
         }
+        // Gateways name their free tiers; a fuzzy scan would bill them at the
+        // paid model's rate. An explicit override above still wins.
+        if is_free_tier(model) {
+            return Some(Pricing {
+                cache_read_explicit: true,
+                cache_create_explicit: true,
+                ..Pricing::empty()
+            });
+        }
+        if let Some(pricing) = self
+            .loose_override_key(model)
+            .and_then(|key| self.entries.get(&key).copied())
+        {
+            return Some(pricing);
+        }
 
         let embedded_models_dev = embedded_models_dev();
         let models_dev = models_dev();
@@ -1444,6 +1459,18 @@ impl PricingMap {
             apply_explicit_pricing_override(&mut pricing, override_value);
         }
         Some(pricing)
+    }
+
+    /// The user override naming the same model as `model` under another
+    /// spelling (`openrouter/openai-gpt-6.1-sol` -> `gpt-6.1-sol`), compared by
+    /// [`model_identity_key`]. A bare key wins over a channel-prefixed one.
+    pub fn loose_override_key(&self, model: &str) -> Option<String> {
+        let wanted = model_identity_key(model);
+        self.user_overrides
+            .keys()
+            .filter(|key| model_identity_key(key) == wanted)
+            .min_by_key(|key| (key.contains('/'), key.as_str()))
+            .cloned()
     }
 
     pub fn find_exact(&self, model: &str) -> Option<Pricing> {
@@ -2622,6 +2649,46 @@ fn suffix_starts_with_numeric_model_version(key: &str, suffix: &str) -> bool {
     !(digit_len == MODEL_DATE_SUFFIX_DIGITS && after_digits.is_none_or(is_pricing_key_boundary))
 }
 
+/// Vendor names gateways glue onto a model id (`openrouter/z-ai-glm-5.3`).
+/// Kept in step with `_VENDOR_TOKENS` in the fleet's `fleetlib/identity.py`.
+const VENDOR_TOKENS: &[&str] = &[
+    "z-ai-",
+    "zai-",
+    "zhipu-",
+    "zhipuai-",
+    "bigmodel-",
+    "deepseek-ai-",
+    "moonshotai-",
+    "minimaxai-",
+    "stepfun-ai-",
+    "openai-",
+    "anthropic-",
+    "google-",
+    "meta-llama-",
+];
+
+/// One spelling for every alias of a model: the part after the last `/`,
+/// lower-cased, one leading vendor token removed, `.` and `@` read as `-`.
+pub fn model_identity_key(model: &str) -> String {
+    let lower = model.trim().to_ascii_lowercase();
+    let bare = lower.rsplit('/').next().unwrap_or_default();
+    let bare = VENDOR_TOKENS
+        .iter()
+        .find_map(|token| bare.strip_prefix(token))
+        .unwrap_or(bare);
+    bare.replace(['.', '@'], "-")
+}
+
+/// Whether a gateway names `model` as a free tier (`opencode-free/...`,
+/// `...-free`, `...:free`, `openrouter/free`).
+pub fn is_free_tier(model: &str) -> bool {
+    let lower = model.trim().to_ascii_lowercase();
+    lower.ends_with(":free")
+        || lower
+            .split('/')
+            .any(|segment| segment == "free" || segment.ends_with("-free"))
+}
+
 /// Normalizes known model separator variants without allocating for canonical keys.
 fn normalized_pricing_key(value: &str) -> Cow<'_, str> {
     if value.contains(['.', '@']) {
@@ -3086,6 +3153,51 @@ mod tests {
         assert!((flash.input * 1e6 - 0.44).abs() < 1e-12);
         assert!((flash.output * 1e6 - 1.32).abs() < 1e-12);
         assert!((flash.cache_read * 1e6 - 0.014).abs() < 1e-12);
+    }
+
+    #[test]
+    fn free_tiers_price_at_zero_unless_overridden() {
+        let pricing = PricingMap::load_embedded();
+        for model in [
+            "opencode-free/laguna-s-2.1-free",
+            "openrouter/poolside-laguna-s-2.1:free",
+            "openrouter/free",
+        ] {
+            let found = pricing.find(model).unwrap();
+            assert_eq!(
+                (found.input, found.output, found.cache_read),
+                (0.0, 0.0, 0.0),
+                "{model}"
+            );
+        }
+        let model = "opencode-free/paid-free".to_string();
+        let override_value = ccusage_cli::PricingOverride {
+            input_cost_per_token: Some(1e-6),
+            ..Default::default()
+        };
+        let pricing = PricingMap::load_with_overrides(true, false, [(&model, &override_value)]);
+        assert_eq!(pricing.find(&model).unwrap().input, 1e-6);
+    }
+
+    #[test]
+    fn user_overrides_match_every_spelling_of_the_same_model() {
+        let model = "GLM-5.3".to_string();
+        let override_value = ccusage_cli::PricingOverride {
+            input_cost_per_token: Some(1.4e-6),
+            ..Default::default()
+        };
+        let pricing = PricingMap::load_with_overrides(true, false, [(&model, &override_value)]);
+        for spelling in [
+            "openrouter/z-ai-glm-5.3",
+            "nvidia/z-ai/glm-5.3",
+            "cloudflare-workers-ai/@cf/zai-org/glm-5.3",
+        ] {
+            assert_eq!(pricing.find(spelling).unwrap().input, 1.4e-6, "{spelling}");
+        }
+        assert_eq!(
+            crate::model_identity_key("openrouter/openai-gpt-6.1-sol"),
+            "gpt-6-1-sol"
+        );
     }
 
     #[test]
