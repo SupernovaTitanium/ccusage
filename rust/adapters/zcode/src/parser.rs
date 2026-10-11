@@ -149,7 +149,15 @@ fn pricing_candidates(raw_model: &str, provider_id: Option<&str>) -> Vec<String>
         candidates.push(format!("zai/{raw_model}"));
         candidates.push(format!("zai/{lower_model}"));
     }
-    candidates.dedup();
+    // Gateway channels prepend routing labels (`anthropic2/claude-opus-5-5`).
+    // The bare name is tried after every verbatim spelling, so a prefixed
+    // override with its own rate still wins over the bare model's rate.
+    if let Some((_, bare)) = raw_model.rsplit_once('/') {
+        candidates.push(bare.to_string());
+        candidates.push(bare.to_ascii_lowercase());
+    }
+    let mut seen = std::collections::HashSet::new();
+    candidates.retain(|candidate| seen.insert(candidate.clone()));
     candidates
 }
 
@@ -350,6 +358,63 @@ mod tests {
 
         assert!(entry.cost > 0.0);
         assert!(entry.missing_pricing_model.is_none());
+    }
+
+    fn custom_entry(model: &str, overrides: &BTreeMap<String, PricingOverride>) -> LoadedEntry {
+        let mut row = row();
+        row.provider_id = Some("847d13c9-0568-4f2f-818e-8bd498e5d920".to_string());
+        row.model_id = model.to_string();
+        let pricing = PricingMap::load_with_overrides(true, false, overrides.iter());
+        row_to_entry(
+            row,
+            Some(&JiffTimeZone::UTC),
+            CostMode::Calculate,
+            &pricing,
+            overrides,
+        )
+        .unwrap()
+    }
+
+    fn rate(input: f64) -> PricingOverride {
+        PricingOverride {
+            input_cost_per_token: Some(input),
+            output_cost_per_token: Some(0.0),
+            cache_read_input_token_cost: Some(0.0),
+            cache_creation_input_token_cost: Some(0.0),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn prices_channel_prefixed_custom_models_from_bare_override() {
+        let overrides = BTreeMap::from([("claude-opus-5-5".to_string(), rate(1e-6))]);
+        for model in ["anthropic2/claude-opus-5-5", "Anthropic3/Claude-Opus-5-5"] {
+            let entry = custom_entry(model, &overrides);
+            assert_eq!(entry.cost, 60.0 * 1e-6, "{model}");
+            assert!(entry.missing_pricing_model.is_none(), "{model}");
+            assert_eq!(entry.model.as_deref(), Some(model));
+        }
+    }
+
+    #[test]
+    fn prefixed_override_beats_bare_override() {
+        let overrides = BTreeMap::from([
+            ("claude-opus-5-5".to_string(), rate(1e-6)),
+            ("free/claude-opus-5-5".to_string(), rate(0.0)),
+        ]);
+        let entry = custom_entry("free/claude-opus-5-5", &overrides);
+        assert_eq!(entry.cost, 0.0);
+        assert!(entry.missing_pricing_model.is_none());
+    }
+
+    #[test]
+    fn bare_name_never_reaches_public_catalog_for_custom_providers() {
+        let entry = custom_entry("anthropic2/claude-opus-4-1", &BTreeMap::new());
+        assert_eq!(entry.cost, 0.0);
+        assert_eq!(
+            entry.missing_pricing_model.as_deref(),
+            Some("anthropic2/claude-opus-4-1")
+        );
     }
 
     #[test]
