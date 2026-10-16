@@ -424,7 +424,7 @@ mod tests {
             .unwrap();
         db.execute(
             "INSERT INTO model_usage
-             VALUES ('usage-opaque-provider', 'session-1', 1786909042666, 'GLM-5.3',
+             VALUES ('usage-opaque-provider', 'session-1', 1786909042666, 'house-model-1',
                      '847d13c9-0568-4f2f-818e-8bd498e5d920', 'completed', 100, 10, 15, 25, 110)",
         )
         .unwrap();
@@ -434,7 +434,10 @@ mod tests {
 
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].cost, 0.0);
-        assert_eq!(entries[0].missing_pricing_model.as_deref(), Some("GLM-5.3"));
+        assert_eq!(
+            entries[0].missing_pricing_model.as_deref(),
+            Some("house-model-1")
+        );
     }
 
     #[test]

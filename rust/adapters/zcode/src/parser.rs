@@ -182,8 +182,14 @@ fn pricing_model(
     if let Some(key) = pricing.loose_override_key(raw_model) {
         return Some(key);
     }
+    // A custom provider may serve anything under any name, so a fuzzy catalog
+    // match is no evidence of its rate; a name the catalog carries verbatim
+    // (`anthropic/claude-fable-5-1` -> `claude-fable-5-1`) is.
     if provider_id.is_some_and(|provider| !is_zai_provider(Some(provider))) {
-        return None;
+        return candidates
+            .iter()
+            .find(|candidate| pricing.find_exact_with_fallback(candidate).is_some())
+            .cloned();
     }
 
     if let Some(candidate) = candidates
@@ -277,7 +283,7 @@ mod tests {
 
         let mut custom = row();
         custom.provider_id = Some("847d13c9-0568-4f2f-818e-8bd498e5d920".to_string());
-        custom.model_id = "deepseek-v4-flash".to_string();
+        custom.model_id = "house-distill-v4-flash".to_string();
         let custom = row_to_entry(
             custom,
             Some(&JiffTimeZone::UTC),
@@ -289,8 +295,36 @@ mod tests {
         assert_eq!(custom.cost, 0.0);
         assert_eq!(
             custom.missing_pricing_model.as_deref(),
-            Some("deepseek-v4-flash")
+            Some("house-distill-v4-flash")
         );
+    }
+
+    #[test]
+    fn prices_custom_provider_models_the_catalog_names_exactly() {
+        let pricing = PricingMap::load_embedded();
+        let custom = |model: &str| {
+            let mut row = row();
+            row.provider_id = Some("custom-ocx-anthropic".to_string());
+            row.model_id = model.to_string();
+            row_to_entry(
+                row,
+                Some(&JiffTimeZone::UTC),
+                CostMode::Calculate,
+                &pricing,
+                &BTreeMap::new(),
+            )
+            .unwrap()
+        };
+
+        let fable = custom("anthropic/claude-fable-5-1");
+        assert!(fable.cost > 0.0);
+        assert!(fable.missing_pricing_model.is_none());
+        assert_eq!(fable.cost, custom("claude-fable-5-1").cost);
+
+        // only a fuzzy catalog neighbour: still unpriced
+        let local = custom("anthropic/claude-fable-5-1-local-finetune");
+        assert_eq!(local.cost, 0.0);
+        assert!(local.missing_pricing_model.is_some());
     }
 
     #[test]
@@ -455,12 +489,15 @@ mod tests {
     }
 
     #[test]
-    fn bare_name_never_reaches_public_catalog_for_custom_providers() {
+    fn bare_name_reaches_public_catalog_only_verbatim_for_custom_providers() {
         let entry = custom_entry("anthropic2/claude-opus-4-1", &BTreeMap::new());
+        assert!(entry.cost > 0.0);
+        assert!(entry.missing_pricing_model.is_none());
+        let entry = custom_entry("anthropic2/claude-opus-4-1-house", &BTreeMap::new());
         assert_eq!(entry.cost, 0.0);
         assert_eq!(
             entry.missing_pricing_model.as_deref(),
-            Some("anthropic2/claude-opus-4-1")
+            Some("anthropic2/claude-opus-4-1-house")
         );
     }
 
