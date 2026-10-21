@@ -20,8 +20,31 @@ pub(super) struct ZcodeUsageRow {
     pub(super) cache_creation_input_tokens: u64,
     pub(super) cache_read_input_tokens: u64,
     pub(super) computed_total_tokens: u64,
+    pub(super) reasoning_tokens: u64,
+    /// Whether this row's provider ever reports Gemini reasoning.
+    pub(super) reasoning_reported: bool,
     pub(super) directory: Option<String>,
     pub(super) version: Option<String>,
+}
+
+/// Output tokens per successful Gemini call charged for a provider that never
+/// reports reasoning: (Console $15.40 - priced $11.6246) / (284 argon x $10/M +
+/// 7 flash x $3.75/M), rounded down, for the Gemini API's OpenAI endpoint.
+pub(super) const UNREPORTED_REASONING_TOKENS_PER_CALL: u64 = 1317;
+
+/// Gemini reports thinking apart from output and bills it at the output rate;
+/// other vendors already count reasoning inside output.
+fn unbilled_reasoning_tokens(row: &ZcodeUsageRow) -> u64 {
+    if !row.model_id.to_ascii_lowercase().contains("gemini") {
+        return 0;
+    }
+    if row.reasoning_tokens > 0 {
+        row.reasoning_tokens
+    } else if !row.reasoning_reported && row.input_tokens > 0 {
+        UNREPORTED_REASONING_TOKENS_PER_CALL
+    } else {
+        0
+    }
 }
 
 pub(super) fn row_to_entry(
@@ -54,8 +77,9 @@ pub(super) fn row_to_entry(
         speed: None,
         cache_creation: None,
     };
+    let reasoning = unbilled_reasoning_tokens(&row);
     let (usage, extra_total_tokens) =
-        apply_total_token_fallback(usage, 0, row.computed_total_tokens);
+        apply_total_token_fallback(usage, reasoning, row.computed_total_tokens);
     if total_usage_tokens(usage) == 0 && extra_total_tokens == 0 {
         return None;
     }
@@ -240,6 +264,8 @@ mod tests {
             cache_creation_input_tokens: 15,
             cache_read_input_tokens: 25,
             computed_total_tokens: 110,
+            reasoning_tokens: 0,
+            reasoning_reported: true,
             directory: Some("/workspace/project".to_string()),
             version: Some("0.16.3".to_string()),
         }
@@ -544,5 +570,69 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    fn gemini_entry(model: &str, reasoning: u64, reported: bool) -> LoadedEntry {
+        let mut row = row();
+        row.provider_id = Some("custom-google".to_string());
+        row.model_id = model.to_string();
+        row.input_tokens = 1000;
+        row.output_tokens = 10;
+        row.cache_creation_input_tokens = 0;
+        row.cache_read_input_tokens = 0;
+        row.computed_total_tokens = 1010;
+        row.reasoning_tokens = reasoning;
+        row.reasoning_reported = reported;
+        let overrides = BTreeMap::from([(
+            model.to_string(),
+            PricingOverride {
+                input_cost_per_token: Some(0.0),
+                output_cost_per_token: Some(1e-6),
+                cache_read_input_token_cost: Some(0.0),
+                cache_creation_input_token_cost: Some(0.0),
+                ..Default::default()
+            },
+        )]);
+        let pricing = PricingMap::load_with_overrides(true, false, overrides.iter());
+        row_to_entry(
+            row,
+            Some(&JiffTimeZone::UTC),
+            CostMode::Calculate,
+            &pricing,
+            &overrides,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn bills_reported_gemini_reasoning_at_output_rate_without_changing_output() {
+        let entry = gemini_entry("google-antigravity/gemini-3.8-flash", 500, true);
+        assert_eq!(entry.data.message.usage.output_tokens, 10);
+        assert_eq!(entry.extra_total_tokens, 500);
+        assert!((entry.cost - 510e-6).abs() < 1e-12);
+    }
+
+    #[test]
+    fn imputes_reasoning_for_gemini_providers_that_never_report_it() {
+        let entry = gemini_entry("gemini-4-argon", 0, false);
+        assert_eq!(entry.data.message.usage.output_tokens, 10);
+        assert_eq!(
+            entry.extra_total_tokens,
+            UNREPORTED_REASONING_TOKENS_PER_CALL
+        );
+        assert!(
+            (entry.cost - (10 + UNREPORTED_REASONING_TOKENS_PER_CALL) as f64 * 1e-6).abs() < 1e-12
+        );
+
+        let reporting = gemini_entry("gemini-4-argon", 0, true);
+        assert_eq!(reporting.extra_total_tokens, 0);
+        assert!((reporting.cost - 10e-6).abs() < 1e-12);
+    }
+
+    #[test]
+    fn leaves_non_gemini_reasoning_inside_output() {
+        let entry = gemini_entry("claude-opus-5-5", 500, false);
+        assert_eq!(entry.extra_total_tokens, 0);
+        assert!((entry.cost - 10e-6).abs() < 1e-12);
     }
 }

@@ -254,7 +254,7 @@ fn model_usage_bucket(usage: &CodexModelUsage) -> CodexUsageBucket {
         input_tokens: usage.input_tokens,
         cached_input_tokens: usage.cached_input_tokens,
         cache_creation_tokens: usage.cache_creation_tokens,
-        output_tokens: usage.output_tokens,
+        output_tokens: usage.output_tokens + usage.billed_reasoning_tokens,
         long_context_input_tokens: usage.long_context_input_tokens,
         long_context_cached_input_tokens: usage.long_context_cached_input_tokens,
         long_context_cache_creation_tokens: usage.long_context_cache_creation_tokens,

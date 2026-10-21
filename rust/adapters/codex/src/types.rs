@@ -78,6 +78,9 @@ pub struct CodexModelUsage {
     pub output_tokens: u64,
     pub reasoning_output_tokens: u64,
     pub total_tokens: u64,
+    /// Reasoning billed on top of `output_tokens` (Gemini reports thinking
+    /// apart from output); priced, never displayed as output.
+    pub billed_reasoning_tokens: u64,
     // Portion of the sums above that came from long-context requests (input
     // above the OpenAI 272K threshold). OpenAI decides the pricing tier per
     // request and bills the whole request at long-context rates, so the split

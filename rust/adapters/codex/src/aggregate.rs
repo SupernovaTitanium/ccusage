@@ -368,6 +368,23 @@ fn codex_period_for(
     })
 }
 
+/// Gemini reports thinking apart from output and bills it at the output rate;
+/// OpenAI-style models already count reasoning inside output.
+fn billed_reasoning_tokens(model: &str, reasoning_output_tokens: u64) -> u64 {
+    if model.to_ascii_lowercase().contains("gemini") {
+        reasoning_output_tokens
+    } else {
+        0
+    }
+}
+
+/// Tokens the event's total leaves out once billed reasoning is counted.
+fn reasoning_missing_from_total(event: &CodexTokenUsageEvent, billed: u64) -> u64 {
+    (event.input_tokens + event.output_tokens + billed)
+        .saturating_sub(event.total_tokens)
+        .min(billed)
+}
+
 fn accumulate_codex_event_into_group(
     group: &mut CodexGroup,
     event: &CodexTokenUsageEvent,
@@ -380,7 +397,11 @@ fn accumulate_codex_event_into_group(
     group.cache_creation_tokens += event.cache_creation_tokens;
     group.output_tokens += event.output_tokens;
     group.reasoning_output_tokens += event.reasoning_output_tokens;
-    group.total_tokens += event.total_tokens;
+    group.total_tokens += event.total_tokens
+        + reasoning_missing_from_total(
+            event,
+            billed_reasoning_tokens(model, event.reasoning_output_tokens),
+        );
     if group
         .last_activity
         .as_deref()
@@ -411,7 +432,9 @@ fn accumulate_codex_event_into_model_usage(
     model_usage.cache_creation_tokens += event.cache_creation_tokens;
     model_usage.output_tokens += event.output_tokens;
     model_usage.reasoning_output_tokens += event.reasoning_output_tokens;
-    model_usage.total_tokens += event.total_tokens;
+    let billed = billed_reasoning_tokens(model, event.reasoning_output_tokens);
+    model_usage.billed_reasoning_tokens += billed;
+    model_usage.total_tokens += event.total_tokens + reasoning_missing_from_total(event, billed);
     // Each event is one request, so its input size decides the pricing tier
     // here; the summed totals cannot recover per-request context sizes. The
     // boundary is per model (OpenAI's 272K models and any future tier with a
@@ -422,7 +445,7 @@ fn accumulate_codex_event_into_model_usage(
         model_usage.long_context_input_tokens += event.input_tokens;
         model_usage.long_context_cached_input_tokens += event.cached_input_tokens;
         model_usage.long_context_cache_creation_tokens += event.cache_creation_tokens;
-        model_usage.long_context_output_tokens += event.output_tokens;
+        model_usage.long_context_output_tokens += event.output_tokens + billed;
     }
     if crate::has_time_dependent_pricing(model) {
         let timestamped_usage = model_usage
@@ -432,6 +455,7 @@ fn accumulate_codex_event_into_model_usage(
         accumulate_codex_event_into_usage_bucket(
             &mut timestamped_usage.usage,
             event,
+            billed,
             is_long_context,
         );
         if record_service_tier {
@@ -443,7 +467,12 @@ fn accumulate_codex_event_into_model_usage(
                 None => None,
             };
             if let Some(recorded_usage) = recorded_usage {
-                accumulate_codex_event_into_usage_bucket(recorded_usage, event, is_long_context);
+                accumulate_codex_event_into_usage_bucket(
+                    recorded_usage,
+                    event,
+                    billed,
+                    is_long_context,
+                );
             }
         }
     }
@@ -454,7 +483,12 @@ fn accumulate_codex_event_into_model_usage(
             None => None,
         };
         if let Some(recorded_usage) = recorded_usage {
-            accumulate_codex_event_into_usage_bucket(recorded_usage, event, is_long_context);
+            accumulate_codex_event_into_usage_bucket(
+                recorded_usage,
+                event,
+                billed,
+                is_long_context,
+            );
         }
     }
     model_usage.is_fallback |= event.is_fallback_model;
@@ -463,17 +497,18 @@ fn accumulate_codex_event_into_model_usage(
 fn accumulate_codex_event_into_usage_bucket(
     usage: &mut CodexUsageBucket,
     event: &CodexTokenUsageEvent,
+    billed_reasoning: u64,
     is_long_context: bool,
 ) {
     usage.input_tokens += event.input_tokens;
     usage.cached_input_tokens += event.cached_input_tokens;
     usage.cache_creation_tokens += event.cache_creation_tokens;
-    usage.output_tokens += event.output_tokens;
+    usage.output_tokens += event.output_tokens + billed_reasoning;
     if is_long_context {
         usage.long_context_input_tokens += event.input_tokens;
         usage.long_context_cached_input_tokens += event.cached_input_tokens;
         usage.long_context_cache_creation_tokens += event.cache_creation_tokens;
-        usage.long_context_output_tokens += event.output_tokens;
+        usage.long_context_output_tokens += event.output_tokens + billed_reasoning;
     }
 }
 
@@ -554,11 +589,13 @@ fn apply_recorded_usage_entries<'a>(
         };
         let is_long_context =
             key.input_tokens > crate::pricing::long_context_split_threshold(record.model.as_str());
+        let output_tokens = key.output_tokens
+            + billed_reasoning_tokens(record.model.as_str(), key.reasoning_output_tokens);
         let usage = CodexUsageBucket {
             input_tokens: key.input_tokens,
             cached_input_tokens: key.cached_input_tokens,
             cache_creation_tokens: key.cache_creation_tokens,
-            output_tokens: key.output_tokens,
+            output_tokens,
             long_context_input_tokens: if is_long_context { key.input_tokens } else { 0 },
             long_context_cached_input_tokens: if is_long_context {
                 key.cached_input_tokens
@@ -570,11 +607,7 @@ fn apply_recorded_usage_entries<'a>(
             } else {
                 0
             },
-            long_context_output_tokens: if is_long_context {
-                key.output_tokens
-            } else {
-                0
-            },
+            long_context_output_tokens: if is_long_context { output_tokens } else { 0 },
         };
         merge_recorded_codex_usage(
             model_usage,
@@ -701,6 +734,7 @@ fn merge_codex_model_usage(target: &mut crate::CodexModelUsage, source: crate::C
     target.output_tokens += source.output_tokens;
     target.reasoning_output_tokens += source.reasoning_output_tokens;
     target.total_tokens += source.total_tokens;
+    target.billed_reasoning_tokens += source.billed_reasoning_tokens;
     target.long_context_input_tokens += source.long_context_input_tokens;
     target.long_context_cached_input_tokens += source.long_context_cached_input_tokens;
     target.long_context_cache_creation_tokens += source.long_context_cache_creation_tokens;
@@ -1623,5 +1657,69 @@ mod tests {
             assert_eq!(groups["2026-05-12"].input_tokens, 111);
             assert_eq!(groups["2026-05-13"].input_tokens, 222);
         }
+    }
+
+    #[test]
+    fn bills_gemini_reasoning_at_output_rate_without_changing_output() {
+        let line = |model: &str| {
+            json!({
+                "timestamp": "2026-10-20T08:01:00.000Z",
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "model": model,
+                        "last_token_usage": {
+                            "input_tokens": 1_000,
+                            "cached_input_tokens": 0,
+                            "output_tokens": 200,
+                            "reasoning_output_tokens": 50,
+                            "total_tokens": 1_200,
+                        },
+                    },
+                },
+            })
+            .to_string()
+        };
+        let fixture = fs_fixture!({
+            "sessions/gemini.jsonl": &line("gemini-3.8-flash"),
+            "sessions/gpt.jsonl": &line("gpt-test"),
+        });
+        let mut pricing = PricingMap::default();
+        pricing.load_json(
+            r#"{
+                "gemini-3.8-flash": { "input_cost_per_token": 0, "output_cost_per_token": 0.000001 },
+                "gpt-test": { "input_cost_per_token": 0, "output_cost_per_token": 0.000001 }
+            }"#,
+        );
+        let shared = SharedArgs {
+            single_thread: true,
+            timezone: Some("UTC".to_string()),
+            ..SharedArgs::default()
+        };
+        let groups =
+            load_groups_from_directory(&fixture.path("sessions"), &shared, AgentReportKind::Daily)
+                .unwrap();
+        let group = &groups["2026-10-20"];
+        assert_eq!(group.output_tokens, 400);
+        assert_eq!(group.reasoning_output_tokens, 100);
+        assert_eq!(group.total_tokens, 2_450);
+
+        let gemini = &group.models["gemini-3.8-flash"];
+        assert_eq!(gemini.output_tokens, 200);
+        assert_eq!(gemini.total_tokens, 1_250);
+        let cost = crate::calculate_codex_model_cost(
+            "gemini-3.8-flash",
+            gemini,
+            &pricing,
+            CodexSpeed::Standard,
+        );
+        assert!((cost - 250e-6).abs() < 1e-12);
+
+        let gpt = &group.models["gpt-test"];
+        assert_eq!(gpt.total_tokens, 1_200);
+        let cost =
+            crate::calculate_codex_model_cost("gpt-test", gpt, &pricing, CodexSpeed::Standard);
+        assert!((cost - 200e-6).abs() < 1e-12);
     }
 }

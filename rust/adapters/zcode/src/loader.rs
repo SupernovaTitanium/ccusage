@@ -29,6 +29,7 @@ struct Schema {
     has_cache_creation: bool,
     has_cache_read: bool,
     has_computed_total: bool,
+    has_reasoning: bool,
     has_session_version: bool,
 }
 
@@ -118,12 +119,13 @@ fn load_entries_from_database(
     debug_log(
         shared,
         format!(
-            "Reading ZCode SQLite schema at {} (layout={}, cache_creation={}, cache_read={}, computed_total={}, provider_id={}, session_version={})",
+            "Reading ZCode SQLite schema at {} (layout={}, cache_creation={}, cache_read={}, computed_total={}, reasoning={}, provider_id={}, session_version={})",
             db_path.display(),
             schema.version.label(),
             schema.has_cache_creation,
             schema.has_cache_read,
             schema.has_computed_total,
+            schema.has_reasoning,
             schema.has_provider_id,
             schema.has_session_version,
         ),
@@ -149,13 +151,18 @@ fn load_entries_from_database(
     } else {
         "NULL"
     };
+    let reasoning = if schema.has_reasoning {
+        "m.reasoning_tokens"
+    } else {
+        "0"
+    };
     let version = if schema.has_session_version {
         "s.version"
     } else {
         "NULL"
     };
     let query = format!(
-        "SELECT m.id, m.session_id, m.started_at, m.model_id, m.input_tokens, m.output_tokens, {cache_creation}, {cache_read}, {computed_total}, {provider_id}, s.directory, {version} FROM model_usage m LEFT JOIN session s ON s.id = m.session_id WHERE m.status = 'completed'"
+        "SELECT m.id, m.session_id, m.started_at, m.model_id, m.input_tokens, m.output_tokens, {cache_creation}, {cache_read}, {computed_total}, {provider_id}, s.directory, {version}, {reasoning} FROM model_usage m LEFT JOIN session s ON s.id = m.session_id WHERE m.status = 'completed'"
     );
     let Ok(mut statement) = connection.prepare(&query) else {
         debug_log(
@@ -165,11 +172,12 @@ fn load_entries_from_database(
         return Vec::new();
     };
 
+    let reporting = reasoning_reporting_providers(&connection, schema);
     let mut entries = Vec::new();
     loop {
         match statement.next() {
             Ok(sqlite::State::Row) => {
-                if let Some(entry) = read_usage_row(&statement).and_then(|row| {
+                if let Some(entry) = read_usage_row(&statement, &reporting).and_then(|row| {
                     row_to_entry(row, tz, shared.mode, pricing, &shared.pricing_overrides)
                 }) {
                     entries.push(entry);
@@ -189,6 +197,30 @@ fn load_entries_from_database(
         }
     }
     entries
+}
+
+/// Providers whose Gemini rows carry reasoning at least once. Gemini bills
+/// thinking apart from output; an endpoint that never reports it (the Gemini
+/// API's OpenAI-compatible route) still bills it, so its rows get imputed.
+fn reasoning_reporting_providers(
+    connection: &sqlite::Connection,
+    schema: Schema,
+) -> HashSet<String> {
+    let mut providers = HashSet::new();
+    if !schema.has_reasoning || !schema.has_provider_id {
+        return providers;
+    }
+    let Ok(mut statement) = connection.prepare(
+        "SELECT DISTINCT provider_id FROM model_usage WHERE reasoning_tokens > 0 AND lower(model_id) LIKE '%gemini%' AND provider_id IS NOT NULL",
+    ) else {
+        return providers;
+    };
+    while let Ok(sqlite::State::Row) = statement.next() {
+        if let Ok(provider) = statement.read::<String, _>(0) {
+            providers.insert(provider);
+        }
+    }
+    providers
 }
 
 fn read_schema(
@@ -253,6 +285,7 @@ fn read_schema(
         has_cache_creation: model_columns.contains("cache_creation_input_tokens"),
         has_cache_read: model_columns.contains("cache_read_input_tokens"),
         has_computed_total: model_columns.contains("computed_total_tokens"),
+        has_reasoning: model_columns.contains("reasoning_tokens"),
         has_session_version: session_columns.contains("version"),
     })
 }
@@ -273,7 +306,14 @@ fn missing_columns(columns: &HashSet<String>, required: &[&str]) -> Vec<String> 
         .collect()
 }
 
-fn read_usage_row(statement: &sqlite::Statement<'_>) -> Option<ZcodeUsageRow> {
+fn read_usage_row(
+    statement: &sqlite::Statement<'_>,
+    reporting: &HashSet<String>,
+) -> Option<ZcodeUsageRow> {
+    let provider_id = statement.read::<Option<String>, _>(9).ok().flatten();
+    let reasoning_reported = provider_id
+        .as_ref()
+        .is_none_or(|provider| reporting.contains(provider));
     Some(ZcodeUsageRow {
         id: statement.read::<String, _>(0).ok()?,
         session_id: statement.read::<String, _>(1).ok()?,
@@ -284,7 +324,9 @@ fn read_usage_row(statement: &sqlite::Statement<'_>) -> Option<ZcodeUsageRow> {
         cache_creation_input_tokens: read_token_column(statement, 6),
         cache_read_input_tokens: read_token_column(statement, 7),
         computed_total_tokens: read_token_column(statement, 8),
-        provider_id: statement.read::<Option<String>, _>(9).ok().flatten(),
+        reasoning_tokens: read_token_column(statement, 12),
+        reasoning_reported,
+        provider_id,
         directory: statement.read::<Option<String>, _>(10).ok().flatten(),
         version: statement.read::<Option<String>, _>(11).ok().flatten(),
     })
