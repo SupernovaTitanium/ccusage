@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{self, BufRead, BufReader},
     path::{Path, PathBuf},
 };
 
@@ -14,9 +14,25 @@ pub(super) fn logical_path(path: &Path) -> PathBuf {
     }
 }
 
+/// Codex compresses and decompresses rollouts in place (`X.jsonl` <-> `X.jsonl.zst`), so a file listed moments ago
+/// may exist only under its other name by the time it is opened; both names hold the same session. A rollout
+/// missing under both names is still an error.
 pub(super) fn open(path: &Path) -> Result<Box<dyn BufRead>> {
-    let file =
-        File::open(path).map_err(|error| cli_error(format!("{}: {error}", path.display())))?;
+    let fail = |error: io::Error| cli_error(format!("{}: {error}", path.display()));
+    let (path, file) = match File::open(path) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let other = if path.to_string_lossy().ends_with(".jsonl.zst") {
+                logical_path(path)
+            } else {
+                path.with_extension("jsonl.zst")
+            };
+            match File::open(&other) {
+                Ok(file) => (other, file),
+                Err(_) => return Err(fail(error)),
+            }
+        }
+        opened => (path.to_path_buf(), opened.map_err(fail)?),
+    };
     if path.to_string_lossy().ends_with(".jsonl.zst") {
         let decoder = zstd::stream::read::Decoder::new(file)
             .map_err(|error| cli_error(format!("{}: zstd: {error}", path.display())))?;
@@ -38,6 +54,8 @@ pub(super) fn read_until(
 
 #[cfg(test)]
 mod tests {
+    use std::io::Read;
+
     use crate::{
         PricingMap,
         cli::{AgentReportKind, CodexSpeed, SharedArgs},
@@ -109,6 +127,28 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn listed_rollout_renamed_by_compression_is_read_under_its_other_name() {
+        let raw = log("session", None, &[100]);
+        let fixture =
+            fs_fixture!({"sessions/plain.jsonl": raw.clone(), "sessions/packed.jsonl.zst": ""});
+        std::fs::write(
+            fixture.path("sessions/packed.jsonl.zst"),
+            zstd::stream::encode_all(raw.as_bytes(), 1).unwrap(),
+        )
+        .unwrap();
+        for listed in ["plain.jsonl.zst", "packed.jsonl"] {
+            let mut text = String::new();
+            super::open(&fixture.path("sessions").join(listed))
+                .unwrap()
+                .read_to_string(&mut text)
+                .unwrap();
+            assert_eq!(text, raw, "{listed}");
+        }
+        let gone = super::open(&fixture.path("sessions/gone.jsonl.zst"));
+        assert!(gone.is_err_and(|error| error.to_string().contains("gone.jsonl.zst")));
     }
 
     #[test]
