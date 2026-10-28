@@ -122,7 +122,7 @@ pub fn report_json(
     pricing: &PricingMap,
     speed: CodexSpeed,
 ) -> Result<Value> {
-    let groups = aggregate_events(events, kind, timezone)?;
+    let groups = aggregate_events(events, kind, timezone, &std::collections::BTreeMap::new())?;
     Ok(report_from_groups(
         &groups,
         kind,

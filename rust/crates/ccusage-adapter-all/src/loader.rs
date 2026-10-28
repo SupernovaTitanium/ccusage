@@ -716,7 +716,12 @@ fn load_codex_rows(
 
     let (mut events, detected) = codex::load_codex_events_with_detection(shared)?;
     codex::filter_events_by_date(&mut events, shared)?;
-    let groups = codex::aggregate_events(&events, kind, shared.timezone.as_deref())?;
+    let groups = codex::aggregate_events(
+        &events,
+        kind,
+        shared.timezone.as_deref(),
+        &shared.pricing_overrides,
+    )?;
     let speed = codex::resolve_codex_speed(CodexSpeed::Auto);
     if shared.detail_bundle && kind == AgentReportKind::Daily {
         let mut occurrences = BTreeMap::<String, usize>::new();
@@ -730,6 +735,7 @@ fn load_codex_rows(
                 std::slice::from_ref(event),
                 kind,
                 shared.timezone.as_deref(),
+                &shared.pricing_overrides,
             )?;
             for (day, group) in event_groups {
                 let row = codex_group_row(&day, &group, pricing, speed, shared.mode);

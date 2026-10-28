@@ -2740,6 +2740,33 @@ pub fn long_context_split_threshold(model: &str) -> u64 {
         .unwrap_or(DEFAULT_LONG_CONTEXT_THRESHOLD_TOKENS)
 }
 
+/// [`long_context_split_threshold`] after the user's pricing overrides: a
+/// `longContextThresholdTokens` override is where that model's long-context
+/// rate starts, so the split has to follow it, including for models the
+/// embedded snapshot does not list.
+pub fn long_context_split_threshold_with_overrides(
+    model: &str,
+    overrides: &std::collections::BTreeMap<String, PricingOverride>,
+) -> u64 {
+    let threshold_of = |name: &str| {
+        [name, model_without_date_suffix(name)]
+            .into_iter()
+            .find_map(|key| {
+                overrides
+                    .get(key)?
+                    .long_context_threshold_tokens
+                    .filter(|threshold| *threshold > 0)
+            })
+    };
+    threshold_of(model)
+        .or_else(|| {
+            model
+                .rsplit_once('/')
+                .and_then(|(_, base)| threshold_of(base))
+        })
+        .unwrap_or_else(|| long_context_split_threshold(model))
+}
+
 /// Strips a trailing release-date suffix (`-YYYY-MM-DD` or `-YYYYMMDD`) so
 /// date-pinned pricing keys share their base model's long-context rates.
 fn model_without_date_suffix(model: &str) -> &str {
@@ -2875,7 +2902,8 @@ mod tests {
     use super::{
         FastMultiplierOverrides, Fuzzy, Pricing, PricingEndpoint, PricingMap,
         build_time_models_dev_json, build_time_pricing_json, embedded_models_dev_pricing,
-        long_context_split_threshold, model_without_date_suffix,
+        long_context_split_threshold, long_context_split_threshold_with_overrides,
+        model_without_date_suffix,
     };
     use ccusage_test_support::fs_fixture;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -5236,6 +5264,31 @@ mod tests {
             assert_eq!(entry.long_context_threshold, Some(200_000), "{model}");
         }
         assert_eq!(long_context_split_threshold("grok-4.5"), 200_000);
+    }
+
+    #[test]
+    fn long_context_split_threshold_follows_override_thresholds() {
+        let override_with = |threshold| ccusage_cli::PricingOverride {
+            long_context_threshold_tokens: Some(threshold),
+            ..ccusage_cli::PricingOverride::default()
+        };
+        let overrides = std::collections::BTreeMap::from([
+            ("gpt-test-override".to_string(), override_with(272_000)),
+            ("gpt-test-zero".to_string(), override_with(0)),
+            ("gpt-5.6-sol".to_string(), override_with(300_000)),
+        ]);
+        let split = |model| long_context_split_threshold_with_overrides(model, &overrides);
+        // Unknown to the embedded snapshot, so only the override knows its boundary.
+        assert_eq!(long_context_split_threshold("gpt-test-override"), 200_000);
+        assert_eq!(split("gpt-test-override"), 272_000);
+        assert_eq!(split("gpt-test-override-2026-01-01"), 272_000);
+        assert_eq!(split("main/gpt-test-override"), 272_000);
+        // An override wins over the embedded boundary.
+        assert_eq!(split("gpt-5.6-sol"), 300_000);
+        // A zero threshold is ignored, and models without an override keep the embedded boundary.
+        assert_eq!(split("gpt-test-zero"), 200_000);
+        assert_eq!(split("gpt-5.5"), 272_000);
+        assert_eq!(split("gpt-5"), 200_000);
     }
 
     #[test]

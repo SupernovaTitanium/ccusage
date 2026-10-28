@@ -12,7 +12,7 @@ use rustc_hash::FxHasher;
 
 use crate::{
     CodexGroup, CodexServiceTier, CodexTokenUsageEvent, CodexUsageBucket, Result,
-    cli::{AgentReportKind, SharedArgs, WeekDay},
+    cli::{AgentReportKind, PricingOverride, SharedArgs, WeekDay},
     fast::FxHashMap,
     format_date_tz, merge_codex_service_tiers, parse_ts_timestamp, parse_tz, wants_json,
     week_start,
@@ -340,7 +340,14 @@ fn add_deduped_event_to_groups(
         return Ok(());
     };
     let group = groups.entry(period).or_default();
-    accumulate_codex_event_into_group(group, event, model, timestamp, false);
+    accumulate_codex_event_into_group(
+        group,
+        event,
+        model,
+        timestamp,
+        false,
+        &shared.pricing_overrides,
+    );
     Ok(())
 }
 
@@ -391,6 +398,7 @@ fn accumulate_codex_event_into_group(
     model: &str,
     timestamp: crate::TimestampMs,
     record_service_tier: bool,
+    pricing_overrides: &BTreeMap<String, PricingOverride>,
 ) {
     group.input_tokens += event.input_tokens;
     group.cached_input_tokens += event.cached_input_tokens;
@@ -417,6 +425,7 @@ fn accumulate_codex_event_into_group(
         model,
         timestamp,
         record_service_tier,
+        pricing_overrides,
     );
 }
 
@@ -426,6 +435,7 @@ fn accumulate_codex_event_into_model_usage(
     model: &str,
     timestamp: crate::TimestampMs,
     record_service_tier: bool,
+    pricing_overrides: &BTreeMap<String, PricingOverride>,
 ) {
     model_usage.input_tokens += event.input_tokens;
     model_usage.cached_input_tokens += event.cached_input_tokens;
@@ -440,7 +450,8 @@ fn accumulate_codex_event_into_model_usage(
     // boundary is per model (OpenAI's 272K models and any future tier with a
     // different threshold) rather than a single global constant, matching the
     // threshold used to price the long-context buckets.
-    let is_long_context = event.input_tokens > crate::pricing::long_context_split_threshold(model);
+    let is_long_context = event.input_tokens
+        > crate::pricing::long_context_split_threshold_with_overrides(model, pricing_overrides);
     if is_long_context {
         model_usage.long_context_input_tokens += event.input_tokens;
         model_usage.long_context_cached_input_tokens += event.cached_input_tokens;
@@ -587,8 +598,11 @@ fn apply_recorded_usage_entries<'a>(
         let Some(model_usage) = group.models.get_mut(record.model.as_str()) else {
             continue;
         };
-        let is_long_context =
-            key.input_tokens > crate::pricing::long_context_split_threshold(record.model.as_str());
+        let is_long_context = key.input_tokens
+            > crate::pricing::long_context_split_threshold_with_overrides(
+                record.model.as_str(),
+                &shared.pricing_overrides,
+            );
         let output_tokens = key.output_tokens
             + billed_reasoning_tokens(record.model.as_str(), key.reasoning_output_tokens);
         let usage = CodexUsageBucket {
@@ -763,6 +777,7 @@ pub fn aggregate_events(
     events: &[CodexTokenUsageEvent],
     kind: AgentReportKind,
     timezone: Option<&str>,
+    pricing_overrides: &BTreeMap<String, PricingOverride>,
 ) -> Result<BTreeMap<String, CodexGroup>> {
     let mut groups = BTreeMap::new();
     let timezone = parse_tz(timezone).or_else(|| Some(JiffTimeZone::system()));
@@ -782,7 +797,14 @@ pub fn aggregate_events(
         };
         let group = groups.entry(period).or_insert_with(CodexGroup::default);
         let model = crate::model_aliases::resolve_model_name(model);
-        accumulate_codex_event_into_group(group, event, model.as_ref(), timestamp, true);
+        accumulate_codex_event_into_group(
+            group,
+            event,
+            model.as_ref(),
+            timestamp,
+            true,
+            pricing_overrides,
+        );
     }
     Ok(groups)
 }
@@ -850,6 +872,39 @@ mod tests {
     }
 
     #[test]
+    fn override_threshold_decides_the_long_context_split() {
+        let event = |input_tokens| CodexTokenUsageEvent {
+            session_id: "session-1".to_string(),
+            timestamp: "2026-10-28T01:00:00.000Z".to_string(),
+            model: Some("gpt-test-override".to_string()),
+            input_tokens,
+            cached_input_tokens: 0,
+            cache_creation_tokens: 0,
+            output_tokens: 10,
+            reasoning_output_tokens: 0,
+            total_tokens: input_tokens + 10,
+            is_fallback_model: false,
+            service_tier: None,
+        };
+        let events = [event(210_000), event(280_000)];
+        let long_input = |overrides: &BTreeMap<String, PricingOverride>| {
+            let groups =
+                aggregate_events(&events, AgentReportKind::Daily, Some("UTC"), overrides).unwrap();
+            groups["2026-10-28"].models["gpt-test-override"].long_context_input_tokens
+        };
+        // Without an override the model splits at the 200K default.
+        assert_eq!(long_input(&BTreeMap::new()), 490_000);
+        let overrides = BTreeMap::from([(
+            "gpt-test-override".to_string(),
+            PricingOverride {
+                long_context_threshold_tokens: Some(272_000),
+                ..PricingOverride::default()
+            },
+        )]);
+        assert_eq!(long_input(&overrides), 280_000);
+    }
+
+    #[test]
     fn stores_timestamped_usage_only_for_time_dependent_models() {
         let event = |model: &str| CodexTokenUsageEvent {
             session_id: "session-1".to_string(),
@@ -868,6 +923,7 @@ mod tests {
             &[event("gpt-5"), event("deepseek-v4-flash")],
             AgentReportKind::Daily,
             Some("UTC"),
+            &BTreeMap::new(),
         )
         .unwrap();
         let models = &groups["2026-08-17"].models;
